@@ -1,0 +1,30 @@
+from pathlib import Path
+
+CONTENT = """server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+    location /api/ {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+"""
+
+path = Path(__file__).resolve().parents[1] / "frontend" / "nginx.conf"
+path.write_text(CONTENT, encoding="utf-8", newline="\n")
+print(path, "OK", path.read_bytes()[:20])

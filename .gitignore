@@ -1,0 +1,13 @@
+.env
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+data/postgres/*
+!data/postgres/.gitkeep
+data/dumps/*
+!data/dumps/.gitkeep
+__pycache__/
+*.pyc
+payment.b64
+frontend/test-results/
+frontend/playwright-report/

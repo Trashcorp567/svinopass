@@ -1,0 +1,3 @@
+svinopass.ru, www.svinopass.ru {
+	reverse_proxy frontend:80
+}

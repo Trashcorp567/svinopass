@@ -1,0 +1,35 @@
+# Production: docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+services:
+  postgres:
+    ports: []
+
+  redis:
+    ports: []
+
+  backend:
+    ports: []
+    environment:
+      ENV: production
+      YOOKASSA_RETURN_URL: https://svinopass.ru/payment/success
+
+  frontend:
+    ports: []
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: svinopass-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
