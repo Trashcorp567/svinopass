@@ -12,8 +12,10 @@ def _configure() -> None:
     Configuration.secret_key = settings.yookassa_secret_key
 
 
-def build_return_url(order_id: str) -> str:
+def build_return_url(order_id: str, path: str | None = None) -> str:
     parsed = urlparse(settings.yookassa_return_url)
+    if path:
+        parsed = parsed._replace(path=path)
     query = dict(parse_qsl(parsed.query))
     query["order_id"] = order_id
     return urlunparse(parsed._replace(query=urlencode(query)))
@@ -39,7 +41,7 @@ def build_receipt(email: str, tier: dict) -> dict:
 def create_payment(order: Order, tier: dict, email: str) -> tuple[str, str]:
     _configure()
     amount = f"{tier['price']:.2f}"
-    return_url = build_return_url(str(order.id))
+    return_url = build_return_url(str(order.id), tier.get("return_path"))
 
     payment = Payment.create(
         {

@@ -6,11 +6,14 @@ from sqlalchemy.orm import Session
 from app.db.models import Order
 
 
-def create_pending_order(db: Session, *, email: str, tier: str, price_rub: int) -> Order:
+def create_pending_order(
+    db: Session, *, email: str, tier: str, price_rub: int, generation_mode: str = "random"
+) -> Order:
     order = Order(
         email=email,
         tier=tier,
         price_rub=price_rub,
+        generation_mode=generation_mode,
         status="pending",
         idempotence_key=uuid.uuid4().hex,
     )

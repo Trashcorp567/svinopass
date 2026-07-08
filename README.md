@@ -149,3 +149,39 @@ In Docker, `YOOKASSA_RETURN_URL` is overridden to `:3000` (local) or `https://sv
 6. Open firewall: `22`, `80`, `443` only.
 
 Caddy in prod compose issues Let's Encrypt certificates automatically once DNS points to the server.
+
+## SEO and search engines
+
+The site ships with `robots.txt`, `sitemap.xml`, per-page meta tags (title, description, Open Graph), JSON-LD on the homepage, and a `www` → apex redirect.
+
+### 1. Verify ownership
+
+**Yandex Webmaster** — [webmaster.yandex.ru](https://webmaster.yandex.ru):
+
+1. Add site `https://svinopass.ru`
+2. Verify via **DNS TXT** record in reg.ru (recommended) or HTML file in `frontend/public/`
+3. Submit sitemap: `https://svinopass.ru/sitemap.xml`
+
+**Google Search Console** — [search.google.com/search-console](https://search.google.com/search-console):
+
+1. Add property `https://svinopass.ru`
+2. Verify via DNS TXT in reg.ru
+3. Sitemaps → add `https://svinopass.ru/sitemap.xml`
+
+### 2. Indexing timeline
+
+- First crawl: usually 1–7 days after sitemap submission
+- Stable positions: weeks to months; depends on queries and competition
+- Check indexing: `site:svinopass.ru` in Google / Yandex
+
+### 3. What helps ranking for this product
+
+- Unique queries: «генератор пароля оплата», «купить надёжный пароль»
+- Links from social profiles, directories, forums (no spam)
+- Keep legal pages (`/offer`, `/privacy`) — trust signals for YooKassa and search
+
+### 4. Optional later
+
+- Yandex Metrica / Google Analytics for traffic
+- Blog or FAQ page with long-tail keywords
+- `og:image` banner for social previews

@@ -161,4 +161,5 @@ netstat -ano | findstr ":8000 :5173"
 ## Документация
 
 - `README.md` — полная инструкция
+- `docs/V2_ROADMAP.md` — **новые фичи v2 для AI** (блоки B1–B6, не трогать прод)
 - `scripts/migrate-v3.sql` — миграция orders для существующей БД

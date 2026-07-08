@@ -1,38 +1,49 @@
-import type { Tier } from "../api/client";
+import type { Tier, GenerationMode } from "../api/client";
 
 interface CheckoutProps {
   tier: Tier | null;
   email: string;
   onEmailChange: (email: string) => void;
+  mode: GenerationMode;
+  onModeChange: (mode: GenerationMode) => void;
+  agreed: boolean;
+  onAgreedChange: (agreed: boolean) => void;
   loading: boolean;
   onPay: () => void;
 }
 
-export default function Checkout({ tier, email, onEmailChange, loading, onPay }: CheckoutProps) {
+export default function Checkout({
+  tier,
+  email,
+  onEmailChange,
+  mode,
+  onModeChange,
+  agreed,
+  onAgreedChange,
+  loading,
+  onPay,
+}: CheckoutProps) {
   if (!tier) {
     return (
-      <section className="checkout checkout--empty">
-        <p>{"Пароль, просто класс! Покупай на svinopass"}</p>
+      <section className="checkout checkout--empty" id="checkout">
+        <p>Выберите тариф выше, чтобы перейти к оплате.</p>
       </section>
     );
   }
 
-  const canPay = email.trim().length > 0 && !loading;
+  const canPay = email.trim().length > 0 && agreed && !loading;
+  const isPasswordTier = tier.product_type !== "backup_codes";
 
   return (
-    <section className="checkout">
-      <h2 className="section-title">{"\u041e\u043f\u043b\u0430\u0442\u0430"}</h2>
+    <section className="checkout" id="checkout">
+      <h2 className="section-title">Оплата</h2>
       <div className="checkout__box">
         <div className="checkout__info">
           <span className="checkout__tier">{tier.name}</span>
           <span className="checkout__amount">{tier.price_label}</span>
         </div>
-        <p className="checkout__note">
-          {"\u041e\u043f\u043b\u0430\u0442\u0430 \u0447\u0435\u0440\u0435\u0437 \u042eKassa. \u041f\u0430\u0440\u043e\u043b\u044c \u043f\u043e\u043a\u0430\u0436\u0435\u043c \u0441\u0440\u0430\u0437\u0443 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u043c \u043d\u0430 email."}
-          {" \u041c\u044b "}<strong>{"\u043d\u0435 \u0445\u0440\u0430\u043d\u0438\u043c"}</strong>{" \u043f\u0430\u0440\u043e\u043b\u0438 \u2014 \u0442\u043e\u043b\u044c\u043a\u043e \u0444\u0430\u043a\u0442 \u0437\u0430\u043a\u0430\u0437\u0430."}
-        </p>
         <label className="checkout__label">
-          {"Email \u0434\u043b\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438 \u043f\u0430\u0440\u043e\u043b\u044f"}
+          Email для доставки пароля
           <input
             className="checkout__input"
             type="email"
@@ -42,12 +53,41 @@ export default function Checkout({ tier, email, onEmailChange, loading, onPay }:
             required
           />
         </label>
-        <button
-          className="btn btn--primary btn--large"
-          onClick={onPay}
-          disabled={!canPay}
-        >
-          {loading ? "\u041f\u0435\u0440\u0435\u0445\u043e\u0434 \u043a \u043e\u043f\u043b\u0430\u0442\u0435..." : `\u041e\u043f\u043b\u0430\u0442\u0438\u0442\u044c ${tier.price_label}`}
+        {isPasswordTier && (
+          <label className="checkout__consent checkout__mode">
+            <input
+              type="checkbox"
+              checked={mode === "passphrase"}
+              onChange={(e) => onModeChange(e.target.checked ? "passphrase" : "random")}
+            />
+            <span>
+              Слова вместо абракадабры (passphrase: 4 слова + цифра + символ, ≈50+ бит энтропии)
+            </span>
+          </label>
+        )}
+        <label className="checkout__consent">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => onAgreedChange(e.target.checked)}
+          />
+          <span>
+            Принимаю{" "}
+            <a href="/offer" target="_blank" rel="noopener noreferrer">
+              публичную оферту
+            </a>{" "}
+            и{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer">
+              политику конфиденциальности
+            </a>
+            , согласен с условиями{" "}
+            <a href="/delivery" target="_blank" rel="noopener noreferrer">
+              получения цифрового заказа
+            </a>
+          </span>
+        </label>
+        <button className="btn btn--primary btn--large" onClick={onPay} disabled={!canPay}>
+          {loading ? "Переход к оплате..." : `Оплатить ${tier.price_label}`}
         </button>
       </div>
     </section>

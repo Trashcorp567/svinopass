@@ -6,14 +6,29 @@ export interface Tier {
   description: string;
   length: number;
   features: string[];
+  product_type?: "password" | "backup_codes" | "watch";
+}
+
+export interface BreachSummary {
+  name: string;
+  title: string;
+  domain: string;
+  breach_date: string;
+  pwn_count?: number | null;
 }
 
 export interface OrderResult {
   order_id: string;
   tier: string;
   tier_name: string;
-  password: string;
-  entropy_bits: number;
+  product_type?: "password" | "backup_codes" | "watch";
+  password?: string | null;
+  backup_codes?: string[] | null;
+  entropy_bits?: number | null;
+  monitored_email?: string | null;
+  expires_at?: string | null;
+  breach_count?: number | null;
+  breaches?: BreachSummary[] | null;
   email_sent: boolean;
   paid_at: string | null;
   warning: string;
@@ -50,10 +65,27 @@ export function fetchTiers(): Promise<Tier[]> {
   return request<Tier[]>("/api/tiers");
 }
 
-export function createCheckout(tier: string, email: string): Promise<CheckoutResult> {
+export type GenerationMode = "random" | "passphrase";
+
+export function createCheckout(
+  tier: string,
+  email: string,
+  mode: GenerationMode = "random",
+): Promise<CheckoutResult> {
   return request<CheckoutResult>("/api/checkout", {
     method: "POST",
-    body: JSON.stringify({ tier, email }),
+    body: JSON.stringify({ tier, email, mode }),
+  });
+}
+
+export function previewWatchEmail(email: string): Promise<{
+  email: string;
+  breach_count: number;
+  breaches: BreachSummary[];
+}> {
+  return request("/api/watch/preview", {
+    method: "POST",
+    body: JSON.stringify({ email }),
   });
 }
 

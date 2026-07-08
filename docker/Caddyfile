@@ -1,3 +1,7 @@
-svinopass.ru, www.svinopass.ru {
+www.svinopass.ru {
+	redir https://svinopass.ru{uri} permanent
+}
+
+svinopass.ru {
 	reverse_proxy frontend:80
 }

@@ -3,37 +3,43 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from yookassa.domain.common import SecurityHelper
 from yookassa.domain.notification import WebhookNotificationEventType, WebhookNotificationFactory
 
 from app.api.schemas import (
+    BreachSummary,
     CheckoutRequest,
     CheckoutResponse,
     HealthResponse,
     OrderPendingResponse,
     OrderResultResponse,
     TierInfo,
+    WatchPreviewRequest,
+    WatchPreviewResponse,
 )
 from app.config import settings
+from app.http import client_ip
 from app.db.database import get_db
 from app.repositories import order_repo
-from app.services.ephemeral import pop_fulfillment
+from app.services.ephemeral import get_report_meta, pop_fulfillment
 from app.services.fulfillment import fulfill_order
 from app.services.payment import create_paid_order, get_all_tiers, get_tier
+from app.services.report_pdf import build_svino_report_pdf
 from app.services.yookassa_client import build_return_url, create_payment, get_payment_status
+from app.services.breach_client import breach_to_dict, fetch_email_breaches
+from app.services.watch_service import run_due_watch_checks
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address, enabled=settings.env == "production")
+limiter = Limiter(key_func=client_ip, enabled=settings.env == "production")
 router = APIRouter(prefix="/api")
 
 
-def _sync_pending_payment_in_dev(db: Session, order) -> None:
+def _sync_pending_payment(db: Session, order) -> None:
     if (
         settings.yookassa_mock
-        or settings.env != "development"
         or order.status != "pending"
         or not order.yookassa_payment_id
         or not settings.yookassa_shop_id
@@ -46,7 +52,7 @@ def _sync_pending_payment_in_dev(db: Session, order) -> None:
             order_repo.mark_paid(db, order)
             fulfill_order(db, order.id)
     except Exception:
-        logger.exception("Dev YooKassa payment sync failed for order %s", order.id)
+        logger.exception("YooKassa payment sync failed for order %s", order.id)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -73,7 +79,7 @@ async def checkout(
         raise HTTPException(status_code=400, detail="Tier is not for sale")
 
     try:
-        order = create_paid_order(db, body.email, body.tier)
+        order = create_paid_order(db, body.email, body.tier, body.mode)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -82,7 +88,7 @@ async def checkout(
         fulfill_order(db, order.id)
         return CheckoutResponse(
             order_id=str(order.id),
-            confirmation_url=build_return_url(str(order.id)),
+            confirmation_url=build_return_url(str(order.id), tier.get("return_path")),
         )
 
     if not settings.yookassa_shop_id or not settings.yookassa_secret_key:
@@ -109,24 +115,60 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    _sync_pending_payment_in_dev(db, order)
+    _sync_pending_payment(db, order)
     db.refresh(order)
+
+    if order.status == "paid" and order.fulfilled_at is None:
+        try:
+            fulfill_order(db, order.id)
+            db.refresh(order)
+        except Exception:
+            logger.exception("Fulfillment retry failed for order %s", order.id)
 
     if order.status != "paid" or order.fulfilled_at is None:
         return OrderPendingResponse(order_id=order_id)
 
     payload = pop_fulfillment(order_id)
     if not payload:
-        raise HTTPException(
-            status_code=410,
-            detail="Password already shown. Check your email.",
+        detail = (
+            "Subscription details already shown. Check your email."
+            if order.tier == "storozh"
+            else "Password already shown. Check your email."
         )
+        raise HTTPException(status_code=410, detail=detail)
 
     tier = get_tier(order.tier)
+    product_type = payload.get("product_type", "password")
+    if product_type == "backup_codes":
+        return OrderResultResponse(
+            order_id=order_id,
+            tier=order.tier,
+            tier_name=tier["name"] if tier else order.tier,
+            product_type="backup_codes",
+            backup_codes=payload.get("backup_codes", []),
+            email_sent=payload["email_sent"],
+            paid_at=order.paid_at,
+            warning=payload.get("warning", "Сохраните коды офлайн."),
+        )
+    if product_type == "watch":
+        return OrderResultResponse(
+            order_id=order_id,
+            tier=order.tier,
+            tier_name=tier["name"] if tier else order.tier,
+            product_type="watch",
+            monitored_email=payload.get("monitored_email"),
+            expires_at=payload.get("expires_at"),
+            breach_count=payload.get("breach_count"),
+            breaches=payload.get("breaches"),
+            email_sent=payload["email_sent"],
+            paid_at=order.paid_at,
+            warning=payload.get("warning", "Мониторинг активен."),
+        )
     return OrderResultResponse(
         order_id=order_id,
         tier=order.tier,
         tier_name=tier["name"] if tier else order.tier,
+        product_type="password",
         password=payload["password"],
         entropy_bits=payload["entropy_bits"],
         email_sent=payload["email_sent"],
@@ -138,12 +180,82 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/watch/preview", response_model=WatchPreviewResponse)
+@limiter.limit("15/hour")
+async def watch_preview(request: Request, body: WatchPreviewRequest):
+    try:
+        breaches = fetch_email_breaches(body.email)
+    except Exception as exc:
+        logger.exception("Watch preview failed")
+        raise HTTPException(status_code=503, detail="Breach check unavailable") from exc
+    return WatchPreviewResponse(
+        email=body.email.lower(),
+        breach_count=len(breaches),
+        breaches=[BreachSummary(**breach_to_dict(b)) for b in breaches],
+    )
+
+
+@router.post("/internal/watch/check")
+async def watch_cron_check(request: Request, db: Session = Depends(get_db)):
+    secret = settings.watch_cron_secret
+    if not secret:
+        raise HTTPException(status_code=503, detail="Cron not configured")
+    provided = request.headers.get("X-Watch-Cron-Secret", "")
+    if provided != secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    stats = run_due_watch_checks(db, min_interval_days=settings.watch_check_interval_days)
+    return {"status": "ok", **stats}
+
+
+@router.get("/orders/{order_id}/report")
+@limiter.limit("10/minute")
+async def order_report(order_id: str, request: Request, db: Session = Depends(get_db)):
+    try:
+        oid = UUID(order_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid order_id") from exc
+
+    order = order_repo.get_by_id(db, oid)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.tier != "legend":
+        raise HTTPException(status_code=404, detail="Report not available for this tier")
+    if order.status != "paid" or order.fulfilled_at is None:
+        raise HTTPException(status_code=404, detail="Order not fulfilled")
+
+    meta = get_report_meta(order_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Report metadata expired")
+
+    tier = get_tier(order.tier)
+    tier_name = tier["name"] if tier else order.tier
+    try:
+        pdf = build_svino_report_pdf(
+            order_id=order_id,
+            tier_name=tier_name,
+            paid_at=order.paid_at,
+            entropy_bits=meta["entropy_bits"],
+            password_length=meta["password_length"],
+            generation_mode=meta.get("generation_mode", "random"),
+        )
+    except FileNotFoundError as exc:
+        logger.exception("PDF font missing")
+        raise HTTPException(status_code=503, detail="PDF generation unavailable") from exc
+
+    filename = f"svinopass-report-{order_id[:8]}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/webhooks/yookassa")
 async def yookassa_webhook(request: Request, db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else ""
+    webhook_ip = client_ip(request)
     if not settings.yookassa_mock and settings.env != "development":
-        if not SecurityHelper().is_ip_trusted(client_ip):
-            logger.warning("Untrusted webhook IP: %s", client_ip)
+        if not SecurityHelper().is_ip_trusted(webhook_ip):
+            logger.warning("Untrusted webhook IP: %s", webhook_ip)
             raise HTTPException(status_code=403, detail="Forbidden")
 
     try:

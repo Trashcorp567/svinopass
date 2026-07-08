@@ -14,7 +14,9 @@ class TestPublicAPI:
         r = requests.get(f"{api}/api/tiers")
         assert r.status_code == 200
         tiers = r.json()
-        assert len(tiers) == 3
+        assert len(tiers) == 5
+        password_tiers = [t for t in tiers if t.get("product_type") != "watch"]
+        assert len(password_tiers) == 4
         assert all(t["price"] > 0 for t in tiers)
 
 
@@ -72,6 +74,28 @@ class TestCheckout:
         )
         assert r.status_code == 422
 
+    def test_checkout_passphrase_mode(self, api, unique_email):
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={"tier": "svinomat", "email": unique_email, "mode": "passphrase"},
+        )
+        assert r.status_code == 200, r.text
+        order_id = r.json()["order_id"]
+        body = requests.get(f"{api}/api/orders/{order_id}/result").json()
+        assert "-" in body["password"]
+        assert body["entropy_bits"] > 40
+
+    def test_checkout_backup_codes(self, api, unique_email):
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={"tier": "backup", "email": unique_email},
+        )
+        assert r.status_code == 200, r.text
+        order_id = r.json()["order_id"]
+        body = requests.get(f"{api}/api/orders/{order_id}/result").json()
+        assert body.get("product_type") == "backup_codes"
+        assert len(body.get("backup_codes", [])) == 10
+
     def test_password_not_stored_in_db(self, api, unique_email, db_session):
         from uuid import UUID
 
@@ -90,6 +114,29 @@ class TestCheckout:
 
 
 class TestWebhook:
+    def test_fulfill_backup_codes(self, db_session, unique_email):
+        from app.repositories import order_repo
+        from app.services.ephemeral import pop_fulfillment
+        from app.services.fulfillment import fulfill_order
+        from app.services.payment import create_paid_order
+
+        order = create_paid_order(db_session, unique_email, "backup")
+        order_repo.mark_paid(db_session, order)
+        fulfill_order(db_session, order.id)
+        payload = pop_fulfillment(str(order.id))
+        assert payload is not None
+        assert payload["product_type"] == "backup_codes"
+        assert len(payload["backup_codes"]) == 10
+
+    def test_order_report_not_legend(self, api, unique_email):
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={"tier": "svinomat", "email": unique_email},
+        )
+        order_id = r.json()["order_id"]
+        report = requests.get(f"{api}/api/orders/{order_id}/report")
+        assert report.status_code == 404
+
     def test_fulfill_idempotent(self, db_session, unique_email):
         from app.repositories import order_repo
         from app.services.fulfillment import fulfill_order
