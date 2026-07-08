@@ -1,4 +1,5 @@
 import type { OrderResult } from "../api/client";
+import WatchActionPlan from "./WatchActionPlan";
 
 interface WatchResultProps {
   result: OrderResult;
@@ -47,6 +48,7 @@ export default function WatchResult({ result }: WatchResultProps) {
             ))}
           </ul>
         )}
+        <WatchActionPlan breachCount={result.breach_count ?? 0} hideWatchCta />
         <p className="checkout__note generator__warning">{result.warning}</p>
         <div className="generator__actions">
           <a href="/watch" className="btn btn--outline">

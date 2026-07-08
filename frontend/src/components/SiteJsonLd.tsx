@@ -6,7 +6,7 @@ const websiteJsonLd = {
   name: SITE.name,
   url: SITE.url,
   description:
-    "Генератор криптографически стойких паролей. Разовая оплата — пароль на экране и на email.",
+    "Генератор паролей онлайн, проверка пароля, проверка утечек email. Криптостойкие пароли с доставкой на email.",
   inLanguage: "ru-RU",
 };
 
@@ -23,6 +23,27 @@ const organizationJsonLd = {
   },
 };
 
+const webAppJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: `${SITE.name} — генератор паролей онлайн`,
+  url: SITE.url,
+  applicationCategory: "SecurityApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "99",
+    priceCurrency: "RUB",
+    description: "Генерация криптостойкого пароля с доставкой на email",
+  },
+  featureList: [
+    "Генератор паролей онлайн",
+    "Проверка пароля и утечек",
+    "Проверка утечек email",
+    "Генератор ников и псевдонимов",
+  ],
+};
+
 export default function SiteJsonLd() {
   return (
     <>
@@ -33,6 +54,10 @@ export default function SiteJsonLd() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
       />
     </>
   );

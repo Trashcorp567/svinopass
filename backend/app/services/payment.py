@@ -75,6 +75,61 @@ TIERS: dict[str, dict] = {
             "30 дней мониторинга за оплату",
         ],
     },
+    "klichki": {
+        "id": "klichki",
+        "name": "Клички",
+        "price": 99,
+        "price_label": "99₽",
+        "description": "15 ников в выбранном стиле — для игр, соцсетей и мессенджеров",
+        "length": 0,
+        "product_type": "creative",
+        "creative_kind": "nicknames",
+        "item_count": 15,
+        "return_path": "/names/success",
+        "features": [
+            "15 уникальных ников",
+            "5 стилей на выбор",
+            "Опциональные слова-опоры",
+            "Доставка на экран и email",
+        ],
+    },
+    "imena": {
+        "id": "imena",
+        "name": "Псевдонимы",
+        "price": 149,
+        "price_label": "149₽",
+        "description": "15 креативных псевдонимов и ников для персонажей, каналов и стримеров",
+        "length": 0,
+        "product_type": "creative",
+        "creative_kind": "names",
+        "item_count": 15,
+        "return_path": "/names/success",
+        "features": [
+            "15 псевдонимов / ников-образов",
+            "Не настоящие имена людей",
+            "Стиль от нейтрального до шуточного",
+            "Доставка на экран и email",
+        ],
+    },
+    "socpak": {
+        "id": "socpak",
+        "name": "Соцпак",
+        "price": 249,
+        "price_label": "249₽",
+        "description": "10 ников + 3 био для профиля в соцсетях",
+        "length": 0,
+        "product_type": "creative",
+        "creative_kind": "social",
+        "nick_count": 10,
+        "bio_count": 3,
+        "return_path": "/names/success",
+        "features": [
+            "10 ников + 3 био",
+            "До 120 символов в био",
+            "Готово для Telegram / VK / игр",
+            "Доставка на экран и email",
+        ],
+    },
 }
 
 
@@ -87,19 +142,28 @@ def get_all_tiers() -> list[dict]:
 
 
 def create_paid_order(
-    db: Session, email: str, tier_id: str, generation_mode: str = "random"
+    db: Session,
+    email: str,
+    tier_id: str,
+    generation_mode: str = "random",
+    *,
+    order_options: dict | None = None,
 ) -> Order:
     tier = get_tier(tier_id)
     if not tier:
         raise ValueError(f"Unknown tier: {tier_id}")
     if tier["price"] <= 0:
         raise ValueError("Tier is not available for purchase")
-    if tier.get("product_type") != "watch" and generation_mode not in {"random", "passphrase"}:
+    product_type = tier.get("product_type", "password")
+    if product_type == "password" and generation_mode not in {"random", "passphrase"}:
         raise ValueError("Invalid generation mode")
+    if product_type == "creative" and not order_options:
+        raise ValueError("Creative orders require options")
     return order_repo.create_pending_order(
         db,
         email=email,
         tier=tier_id,
         price_rub=tier["price"],
         generation_mode=generation_mode,
+        order_options=order_options or {},
     )

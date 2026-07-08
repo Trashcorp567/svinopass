@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /payment/success
+Disallow: /watch/success
 Disallow: /api/
 
 Sitemap: https://svinopass.ru/sitemap.xml

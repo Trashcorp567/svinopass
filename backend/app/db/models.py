@@ -19,6 +19,7 @@ class Order(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     tier: Mapped[str] = mapped_column(String(50), nullable=False)
     generation_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="random")
+    order_options: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     price_rub: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
     yookassa_payment_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)

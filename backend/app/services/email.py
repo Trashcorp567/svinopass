@@ -11,6 +11,7 @@ from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
+from app.services.watch_action_plan import format_action_plan_text
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,39 @@ def _build_backup_codes_email_content(
         f"{numbered}\n\n"
         f"Храните коды офлайн в надёжном месте. Каждый код предназначен для однократного "
         f"использования. Мы не храним коды на сервере.\n\n"
+        f"— Svinopass (svinopass.ru)\n"
+    )
+    return subject, body
+
+
+def _build_creative_email_content(
+    *,
+    tier_name: str,
+    order_id: str,
+    items: list[str],
+    bios: list[str],
+    kind: str,
+    category: str,
+) -> tuple[str, str]:
+    kind_labels = {
+        "nicknames": "ники",
+        "names": "имена",
+        "social": "соцпак",
+    }
+    kind_label = kind_labels.get(kind, "варианты")
+    subject = f"Svinopass — ваши {kind_label} ({tier_name})"
+    numbered = "\n".join(f"{i + 1}. {item}" for i, item in enumerate(items))
+    body = (
+        f"Здравствуйте!\n\n"
+        f"Ваш заказ {order_id} (тариф «{tier_name}», стиль «{category}»):\n\n"
+        f"{numbered}\n"
+    )
+    if bios:
+        bio_block = "\n".join(f"• {bio}" for bio in bios)
+        body += f"\nБио для профиля:\n{bio_block}\n"
+    body += (
+        "\nМы не храним сгенерированный контент на сервере. "
+        "Занятость ников в соцсетях и играх не проверяется.\n\n"
         f"— Svinopass (svinopass.ru)\n"
     )
     return subject, body
@@ -301,6 +335,33 @@ def send_backup_codes_email(
     )
 
 
+def send_creative_email(
+    *,
+    to: str,
+    items: list[str],
+    bios: list[str],
+    tier_name: str,
+    order_id: str,
+    kind: str,
+    category: str,
+) -> bool:
+    subject, body = _build_creative_email_content(
+        tier_name=tier_name,
+        order_id=order_id,
+        items=items,
+        bios=bios,
+        kind=kind,
+        category=category,
+    )
+    return _deliver_email(
+        to=to,
+        subject=subject,
+        body=body,
+        order_id=order_id,
+        dev_log=f"to={to} order={order_id} tier={tier_name} creative_items={len(items)}",
+    )
+
+
 def _format_breach_lines(breaches: list[dict]) -> str:
     lines: list[str] = []
     for breach in breaches:
@@ -327,10 +388,15 @@ def send_watch_welcome_email(
 ) -> bool:
     subject = "Svinopass: Свиной сторож включён"
     breach_lines = _format_breach_lines(breaches)
+    action_plan = format_action_plan_text(
+        breach_count=len(breaches),
+        include_watch_cta=False,
+    )
     body = (
         f"Мониторинг email {monitored_email} активен до {_format_expires(expires_at)}.\n\n"
         f"Сейчас в публичных утечках: {len(breaches)}\n"
         f"{breach_lines}\n\n"
+        f"{action_plan}\n\n"
         "Раз в неделю мы проверяем новые утечки и пришлём письмо, если появится что-то новое.\n"
         "Продлите подписку на svinopass.ru/watch до окончания срока.\n\n"
         f"Заказ: {order_id}\n"
@@ -355,12 +421,13 @@ def send_watch_alert_email(
 ) -> bool:
     subject = f"Svinopass: новые утечки для {monitored_email}"
     breach_lines = _format_breach_lines(new_breaches)
+    action_plan = format_action_plan_text(breach_count=total_count, include_watch_cta=False)
     body = (
         f"Свиной сторож нашёл {len(new_breaches)} новых утечек для {monitored_email}.\n\n"
         f"{breach_lines}\n\n"
         f"Всего в базе утечек: {total_count}.\n"
         f"Мониторинг активен до {_format_expires(expires_at)}.\n\n"
-        "Рекомендуем сменить пароли на затронутых сервисах и включить 2FA.\n"
+        f"{action_plan}\n\n"
         "— Svinopass"
     )
     return _deliver_email(

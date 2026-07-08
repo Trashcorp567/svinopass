@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createCheckout, previewWatchEmail, type BreachSummary } from "../api/client";
+import WatchActionPlan from "../components/WatchActionPlan";
 
 export default function WatchPage() {
   const [email, setEmail] = useState("");
@@ -42,10 +43,11 @@ export default function WatchPage() {
 
   return (
     <section className="watch">
-      <h1 className="section-title">Свиной сторож</h1>
+      <h1 className="section-title">Проверка утечек email</h1>
+      <p className="watch__brand">Свиной сторож · Svinopass</p>
       <p className="watch__lead">
-        Мониторинг вашего email в публичных утечках. Раз в неделю проверяем базы утечек и
-        присылаем письмо, если появилось что-то новое. <strong>199₽ / 30 дней.</strong>
+        Бесплатный снимок: проверяем ваш email в публичных базах утечек. Подписка — еженедельный
+        мониторинг и письмо, если появилось что-то новое. <strong>199₽ / 30 дней.</strong>
       </p>
 
       <div className="watch__box">
@@ -100,6 +102,7 @@ export default function WatchPage() {
             <p className="checkout__note">
               Снимок — только сейчас. Подписка пришлёт письмо, когда появятся <em>новые</em> утечки.
             </p>
+            <WatchActionPlan breachCount={preview.breach_count} />
           </div>
         )}
 

@@ -18,6 +18,11 @@ import ContactsPage from "./pages/ContactsPage";
 import CheckPage from "./pages/CheckPage";
 import WatchPage from "./pages/WatchPage";
 import WatchSuccessPage from "./pages/WatchSuccessPage";
+import NamesPage from "./pages/NamesPage";
+import NamesSuccessPage from "./pages/NamesSuccessPage";
+import SeoServices from "./components/SeoServices";
+import PageJsonLd from "./components/PageJsonLd";
+import PigGameModal from "./components/PigGameModal";
 
 function MainApp() {
   const [tiers, setTiers] = useState<Tier[]>([]);
@@ -32,7 +37,9 @@ function MainApp() {
 
   useEffect(() => {
     fetchTiers()
-      .then((all) => setTiers(all.filter((t) => t.product_type !== "watch")))
+      .then((all) =>
+        setTiers(all.filter((t) => t.product_type !== "watch" && t.product_type !== "creative")),
+      )
       .catch(console.error);
   }, []);
 
@@ -89,6 +96,7 @@ function MainApp() {
         onPay={handlePay}
       />
       <DeliveryInfo />
+      <SeoServices />
       {payError && <p className="error-banner">{payError}</p>}
     </>
   );
@@ -114,6 +122,10 @@ function resolvePage(pathname: string, onPasswordWaiting: (waiting: boolean) => 
       return <WatchPage />;
     case "/watch/success":
       return <WatchSuccessPage />;
+    case "/names":
+      return <NamesPage />;
+    case "/names/success":
+      return <NamesSuccessPage />;
     default:
       return <MainApp />;
   }
@@ -123,6 +135,7 @@ export default function App() {
   const pathname = window.location.pathname;
   const isSuccessPage = pathname === "/payment/success";
   const [passwordLoading, setPasswordLoading] = useState(isSuccessPage);
+  const [pigGameOpen, setPigGameOpen] = useState(false);
 
   usePageMeta(pathname);
 
@@ -138,9 +151,11 @@ export default function App() {
   return (
     <div className="app">
       {pathname === "/" && <SiteJsonLd />}
-      <SiteHeader onHomeNav={handleHomeNav} />
+      <PageJsonLd pathname={pathname} />
+      <SiteHeader onHomeNav={handleHomeNav} onOpenPigGame={() => setPigGameOpen(true)} />
       <main>{resolvePage(pathname, setPasswordLoading)}</main>
       <SiteFooter />
+      <PigGameModal open={pigGameOpen} onClose={() => setPigGameOpen(false)} />
     </div>
   );
 }

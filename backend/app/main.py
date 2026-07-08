@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +9,12 @@ from slowapi.errors import RateLimitExceeded
 from app.api.routes import limiter, router
 from app.config import settings
 from app.db.database import Base, engine
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logging.getLogger("app").setLevel(logging.INFO)
 
 
 @asynccontextmanager

@@ -13,6 +13,7 @@ from app.api.schemas import (
     BreachSummary,
     CheckoutRequest,
     CheckoutResponse,
+    CreativeCategoryInfo,
     HealthResponse,
     OrderPendingResponse,
     OrderResultResponse,
@@ -27,6 +28,7 @@ from app.repositories import order_repo
 from app.services.ephemeral import get_report_meta, pop_fulfillment
 from app.services.fulfillment import fulfill_order
 from app.services.payment import create_paid_order, get_all_tiers, get_tier
+from app.services.creative_categories import list_categories, validate_creative_checkout
 from app.services.report_pdf import build_svino_report_pdf
 from app.services.yookassa_client import build_return_url, create_payment, get_payment_status
 from app.services.breach_client import breach_to_dict, fetch_email_breaches
@@ -65,6 +67,11 @@ async def tiers():
     return [TierInfo(**t) for t in get_all_tiers()]
 
 
+@router.get("/creative/categories", response_model=list[CreativeCategoryInfo])
+async def creative_categories():
+    return [CreativeCategoryInfo(**c.__dict__) for c in list_categories()]
+
+
 @router.post("/checkout", response_model=CheckoutResponse)
 @limiter.limit("5/minute")
 async def checkout(
@@ -78,8 +85,30 @@ async def checkout(
     if tier["price"] <= 0:
         raise HTTPException(status_code=400, detail="Tier is not for sale")
 
+    product_type = tier.get("product_type", "password")
+    order_options: dict | None = None
+    generation_mode = body.mode
+
+    if product_type == "creative":
+        if not body.category:
+            raise HTTPException(status_code=400, detail="Category is required for creative tiers")
+        try:
+            category, seed_words = validate_creative_checkout(body.category, body.seed_words)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        order_options = {"category": category, "seed_words": seed_words}
+        generation_mode = "random"
+    elif product_type != "password":
+        generation_mode = "random"
+
     try:
-        order = create_paid_order(db, body.email, body.tier, body.mode)
+        order = create_paid_order(
+            db,
+            body.email,
+            body.tier,
+            generation_mode,
+            order_options=order_options,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -128,16 +157,17 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
     if order.status != "paid" or order.fulfilled_at is None:
         return OrderPendingResponse(order_id=order_id)
 
+    tier = get_tier(order.tier)
     payload = pop_fulfillment(order_id)
     if not payload:
-        detail = (
-            "Subscription details already shown. Check your email."
-            if order.tier == "storozh"
-            else "Password already shown. Check your email."
-        )
+        if order.tier == "storozh":
+            detail = "Subscription details already shown. Check your email."
+        elif tier and tier.get("product_type") == "creative":
+            detail = "Creative pack already shown. Check your email."
+        else:
+            detail = "Password already shown. Check your email."
         raise HTTPException(status_code=410, detail=detail)
 
-    tier = get_tier(order.tier)
     product_type = payload.get("product_type", "password")
     if product_type == "backup_codes":
         return OrderResultResponse(
@@ -163,6 +193,21 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
             email_sent=payload["email_sent"],
             paid_at=order.paid_at,
             warning=payload.get("warning", "Мониторинг активен."),
+        )
+    if product_type == "creative":
+        return OrderResultResponse(
+            order_id=order_id,
+            tier=order.tier,
+            tier_name=tier["name"] if tier else order.tier,
+            product_type="creative",
+            creative_items=payload.get("creative_items", []),
+            creative_bios=payload.get("creative_bios", []),
+            creative_category=payload.get("creative_category"),
+            creative_kind=payload.get("creative_kind"),
+            creative_source=payload.get("creative_source"),
+            email_sent=payload["email_sent"],
+            paid_at=order.paid_at,
+            warning=payload.get("warning", "Сохраните варианты сейчас."),
         )
     return OrderResultResponse(
         order_id=order_id,

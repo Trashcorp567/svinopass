@@ -27,7 +27,7 @@ export function usePageMeta(pathname: string) {
     const canonicalPath = pathname === "/" ? "" : pathname;
     const url = `${SITE.url}${canonicalPath}`;
     const documentTitle =
-      pathname === "/" ? meta.title : `${meta.title} — ${SITE.name}`;
+      pathname === "/" ? `${meta.title} | ${SITE.name}` : `${meta.title} — ${SITE.name}`;
 
     document.title = documentTitle;
 

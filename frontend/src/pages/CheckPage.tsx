@@ -33,10 +33,12 @@ export default function CheckPage() {
 
   return (
     <section className="check">
-      <h1 className="section-title">Хрюк-чек пароля</h1>
+      <h1 className="section-title">Проверка пароля и утечек онлайн</h1>
+      <p className="check__brand">Хрюк-чек · Svinopass</p>
       <p className="check__lead">
-        Проверка силы и утечек — <strong>в браузере</strong>. Пароль не отправляется на сервер Svinopass;
-        для утечек используется k-anonymity (HIBP): на внешний API уходит только часть SHA-1 хеша.
+        Бесплатная проверка пароля: оценка силы, энтропия и поиск в базах утечек —{" "}
+        <strong>в браузере</strong>. Пароль не отправляется на сервер Svinopass; для утечек
+        используется k-anonymity (HIBP): на внешний API уходит только часть SHA-1 хеша.
       </p>
 
       <div className="check__box">
@@ -121,6 +123,13 @@ export default function CheckPage() {
           </a>
         </div>
       )}
+
+      <nav className="check__related" aria-label="Связанные инструменты">
+        <p>
+          Нужен новый пароль? <a href="/#pricing">Заказать генерацию</a> или{" "}
+          <a href="/watch">проверка утечек email</a>.
+        </p>
+      </nav>
     </section>
   );
 }

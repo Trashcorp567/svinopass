@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.repositories import order_repo
 from app.services.backup_codes import generate_backup_codes
-from app.services.email import send_backup_codes_email, send_password_email
+from app.services.creative import CREATIVE_WARNING, generate_creative_pack
+from app.services.email import send_backup_codes_email, send_creative_email, send_password_email
 from app.services.ephemeral import store_fulfillment, store_report_meta
 from app.services.passphrase import generate_passphrase, passphrase_entropy_for_display
 from app.services.password import estimate_entropy_bits, generate_password
@@ -78,7 +79,42 @@ def fulfill_order(db: Session, order_id: uuid.UUID) -> None:
                 "breaches": payload["breaches"],
             },
         )
-        order_repo.mark_fulfilled(db, order, email_sent=payload["email_sent"])
+        order_repo.mark_fulfilled(db, order, email_sent=email_sent)
+        return
+
+    if product_type == "creative":
+        options = order.order_options or {}
+        category = options.get("category", "neutral")
+        seed_words = options.get("seed_words", [])
+        result = generate_creative_pack(order.tier, category, seed_words)
+        email_sent = send_creative_email(
+            to=order.email,
+            items=result.items,
+            bios=result.bios,
+            tier_name=tier["name"],
+            order_id=str(order.id),
+            kind=result.kind,
+            category=result.category,
+        )
+        if not email_sent:
+            logger.error("Creative email delivery failed for order %s", order.id)
+        store_fulfillment(
+            str(order.id),
+            {
+                "order_id": str(order.id),
+                "tier": order.tier,
+                "tier_name": tier["name"],
+                "product_type": "creative",
+                "creative_items": result.items,
+                "creative_bios": result.bios,
+                "creative_category": result.category,
+                "creative_kind": result.kind,
+                "creative_source": result.source,
+                "email_sent": email_sent,
+                "warning": CREATIVE_WARNING,
+            },
+        )
+        order_repo.mark_fulfilled(db, order, email_sent=email_sent)
         return
 
     if order.generation_mode == "passphrase":

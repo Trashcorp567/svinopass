@@ -6,14 +6,35 @@ export type PageMeta = {
   noindex?: boolean;
 };
 
+/** Главная: ключ «генератор паролей онлайн» в title и description. */
 export const DEFAULT_META: PageMeta = {
-  title: "Svinopass — генератор криптографически стойких паролей",
+  title: "Генератор паролей онлайн — криптостойкий пароль на email",
   description:
-    "Разовая услуга: выберите тариф, оплатите картой — надёжный пароль появится на экране и придёт на email. Пароли на сервере не храним.",
+    "Генератор паролей онлайн с доставкой на email после оплаты. Бесплатно: проверка пароля и проверка утечек email. Пароли на сервере не храним.",
 };
 
 export const PAGE_META: Record<string, PageMeta> = {
   "/": DEFAULT_META,
+  "/check": {
+    title: "Проверка пароля и утечек онлайн",
+    description:
+      "Бесплатная проверка пароля: оценка силы, энтропия и поиск в базах утечек (HIBP k-anonymity). Пароль не отправляется на сервер Svinopass.",
+  },
+  "/watch": {
+    title: "Проверка утечек email — мониторинг баз",
+    description:
+      "Бесплатная проверка утечек email в публичных базах. Подписка 199₽/мес: еженедельный мониторинг и уведомления о новых утечках.",
+  },
+  "/names": {
+    title: "Генератор ников и псевдонимов онлайн",
+    description:
+      "Платный набор English-ников, псевдонимов и био для соцсетей и игр.",
+  },
+  "/names/success": {
+    title: "Набор готов",
+    description: "Страница выдачи ников и псевдонимов после оплаты.",
+    noindex: true,
+  },
   "/offer": {
     title: "Публичная оферта",
     description: `Условия оказания услуги генерации паролей на ${SITE.domain}. Тарифы, оплата, возврат, ответственность сторон.`,
@@ -31,16 +52,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: "Контакты и реквизиты",
     description: `Контакты продавца ${SITE.sellerName}, ИНН ${SITE.inn}, email и телефон поддержки ${SITE.name}.`,
   },
-  "/check": {
-    title: "Проверка надёжности пароля",
-    description:
-      "Бесплатный хрюк-чек: оценка силы пароля и проверка утечек в браузере. Пароль не отправляется на сервер Svinopass.",
-  },
-  "/watch": {
-    title: "Свиной сторож — мониторинг утечек email",
-    description:
-      "Подписка 199₽/мес: проверка email в публичных базах утечек и уведомления раз в неделю.",
-  },
   "/watch/success": {
     title: "Сторож подключён",
     description: "Подтверждение подписки на мониторинг утечек email.",
@@ -53,4 +64,13 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 };
 
-export const SITEMAP_PATHS = ["/", "/check", "/watch", "/offer", "/privacy", "/delivery", "/contacts"] as const;
+export const SITEMAP_PATHS = [
+  "/",
+  "/check",
+  "/names",
+  "/watch",
+  "/offer",
+  "/privacy",
+  "/delivery",
+  "/contacts",
+] as const;

@@ -55,5 +55,11 @@ class Settings(BaseSettings):
     watch_cron_secret: str = ""
     watch_check_interval_days: int = 7
 
+    # Creative nicknames — Yandex GPT (fallback to wordlists on error)
+    yandex_gpt_api_key: str = ""
+    yandex_gpt_folder_id: str = ""
+    yandex_gpt_model: str = "yandexgpt-lite"
+    creative_ai_enabled: bool = True
+
 
 settings = Settings()

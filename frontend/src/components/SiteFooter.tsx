@@ -4,8 +4,9 @@ export default function SiteFooter() {
   return (
     <footer className="footer">
       <nav className="footer__nav" aria-label="Юридическая информация">
-        <a href="/check">Проверить пароль</a>
-        <a href="/watch">Свиной сторож</a>
+        <a href="/#pricing">Тарифы</a>
+        <a href="/check">Проверка пароля</a>
+        <a href="/watch">Проверка утечек</a>
         {LEGAL_LINKS.map((link) => (
           <a key={link.href} href={link.href}>
             {link.label}

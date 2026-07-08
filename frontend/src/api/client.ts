@@ -6,7 +6,15 @@ export interface Tier {
   description: string;
   length: number;
   features: string[];
-  product_type?: "password" | "backup_codes" | "watch";
+  product_type?: "password" | "backup_codes" | "watch" | "creative";
+}
+
+export interface CreativeCategory {
+  id: string;
+  label: string;
+  description: string;
+  requires_seeds: boolean;
+  optional_seeds: boolean;
 }
 
 export interface BreachSummary {
@@ -21,7 +29,7 @@ export interface OrderResult {
   order_id: string;
   tier: string;
   tier_name: string;
-  product_type?: "password" | "backup_codes" | "watch";
+  product_type?: "password" | "backup_codes" | "watch" | "creative";
   password?: string | null;
   backup_codes?: string[] | null;
   entropy_bits?: number | null;
@@ -29,6 +37,11 @@ export interface OrderResult {
   expires_at?: string | null;
   breach_count?: number | null;
   breaches?: BreachSummary[] | null;
+  creative_items?: string[] | null;
+  creative_bios?: string[] | null;
+  creative_category?: string | null;
+  creative_kind?: string | null;
+  creative_source?: string | null;
   email_sent: boolean;
   paid_at: string | null;
   warning: string;
@@ -78,6 +91,27 @@ export function createCheckout(
   });
 }
 
+export function fetchCreativeCategories(): Promise<CreativeCategory[]> {
+  return request<CreativeCategory[]>("/api/creative/categories");
+}
+
+export function createCreativeCheckout(
+  tier: string,
+  email: string,
+  category: string,
+  seedWords: string[],
+): Promise<CheckoutResult> {
+  return request<CheckoutResult>("/api/checkout", {
+    method: "POST",
+    body: JSON.stringify({
+      tier,
+      email,
+      category,
+      seed_words: seedWords,
+    }),
+  });
+}
+
 export function previewWatchEmail(email: string): Promise<{
   email: string;
   breach_count: number;
@@ -94,7 +128,7 @@ export async function fetchOrderResult(
 ): Promise<OrderResult | OrderPending> {
   const response = await fetch(`/api/orders/${orderId}/result`);
   if (response.status === 410) {
-    throw new Error("Password already shown. Check your email.");
+    throw new Error("Result already shown. Check your email.");
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
