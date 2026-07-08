@@ -1,7 +1,13 @@
+import base64
 import re
 import uuid
+from io import BytesIO
 
 import requests
+
+TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
 
 
 class TestPublicAPI:
@@ -14,9 +20,9 @@ class TestPublicAPI:
         r = requests.get(f"{api}/api/tiers")
         assert r.status_code == 200
         tiers = r.json()
-        assert len(tiers) == 8
+        assert len(tiers) == 13
         password_tiers = [
-            t for t in tiers if t.get("product_type") not in ("watch", "creative")
+            t for t in tiers if t.get("product_type") not in ("watch", "creative", "seller", "image_qr")
         ]
         assert len(password_tiers) == 4
         assert all(t["price"] > 0 for t in tiers)
@@ -27,6 +33,13 @@ class TestPublicAPI:
         categories = r.json()
         assert len(categories) == 4
         assert any(c["id"] == "funny" and c["optional_seeds"] for c in categories)
+
+    def test_sell_platforms(self, api):
+        r = requests.get(f"{api}/api/sell/platforms")
+        assert r.status_code == 200
+        platforms = r.json()
+        assert len(platforms) == 3
+        assert {p["id"] for p in platforms} == {"ozon", "wb", "avito"}
 
 
 class TestCheckout:
@@ -148,6 +161,69 @@ class TestCheckout:
         assert len(body.get("creative_items", [])) == 10
         assert len(body.get("creative_bios", [])) == 3
 
+    def test_checkout_seller_ozon(self, api, unique_email):
+        stage = requests.post(
+            f"{api}/api/sell/stage",
+            files={"file": ("item.png", BytesIO(TINY_PNG), "image/png")},
+        )
+        assert stage.status_code == 200, stage.text
+        staging_id = stage.json()["staging_id"]
+
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={
+                "tier": "ozon_card",
+                "email": unique_email,
+                "staging_id": staging_id,
+                "product_name": "Термокружка",
+                "product_category": "Посуда",
+                "product_hints": "450 мл, нержавейка",
+            },
+        )
+        assert r.status_code == 200, r.text
+        order_id = r.json()["order_id"]
+        assert "/sell/success" in r.json()["confirmation_url"]
+        body = requests.get(f"{api}/api/orders/{order_id}/result").json()
+        assert body.get("product_type") == "seller"
+        assert len(body.get("seller_cards", [])) == 1
+        assert len(body["seller_cards"][0].get("titles", [])) == 5
+
+    def test_checkout_seller_requires_photo(self, api, unique_email):
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={"tier": "ozon_card", "email": unique_email},
+        )
+        assert r.status_code == 400
+
+    def test_checkout_image_qr(self, api, unique_email):
+        stage = requests.post(
+            f"{api}/api/sell/stage",
+            files={"file": ("pic.png", BytesIO(TINY_PNG), "image/png")},
+        )
+        assert stage.status_code == 200, stage.text
+        staging_id = stage.json()["staging_id"]
+
+        r = requests.post(
+            f"{api}/api/checkout",
+            json={
+                "tier": "qr_pic",
+                "email": unique_email,
+                "staging_id": staging_id,
+            },
+        )
+        assert r.status_code == 200, r.text
+        order_id = r.json()["order_id"]
+        assert "/qr/success" in r.json()["confirmation_url"]
+        body = requests.get(f"{api}/api/orders/{order_id}/result").json()
+        assert body.get("product_type") == "image_qr"
+        assert "/i/" in body.get("image_qr_url", "")
+        assert "image_qr_expires_at" in body
+
+        token = body["image_qr_url"].rstrip("/").split("/")[-1]
+        image = requests.get(f"{api}/api/public/images/{token}")
+        assert image.status_code == 200
+        assert image.headers.get("content-type", "").startswith("image/")
+
     def test_password_not_stored_in_db(self, api, unique_email, db_session):
         from uuid import UUID
 
@@ -199,6 +275,38 @@ class TestWebhook:
         assert payload["product_type"] == "creative"
         assert len(payload["creative_items"]) == 15
         assert payload["creative_category"] == "funny"
+
+    def test_fulfill_seller(self, db_session, unique_email):
+        from app.repositories import order_repo
+        from app.services.ephemeral import pop_fulfillment
+        from app.services.fulfillment import fulfill_order
+        from app.services.payment import create_paid_order
+        from app.services.seller_staging import store_sell_image, create_staging_id
+
+        staging_id = create_staging_id()
+        store_sell_image(
+            staging_id,
+            mime="image/png",
+            data_b64=base64.b64encode(TINY_PNG).decode("ascii"),
+        )
+        order = create_paid_order(
+            db_session,
+            unique_email,
+            "wb_card",
+            order_options={
+                "staging_id": staging_id,
+                "product_name": "Кружка",
+                "product_category": "Посуда",
+                "product_hints": "Объём 350 мл",
+            },
+        )
+        order_repo.mark_paid(db_session, order)
+        fulfill_order(db_session, order.id)
+        payload = pop_fulfillment(str(order.id))
+        assert payload is not None
+        assert payload["product_type"] == "seller"
+        assert len(payload["seller_cards"]) == 1
+        assert payload["seller_cards"][0]["platform"] == "wb"
 
     def test_order_report_not_legend(self, api, unique_email):
         r = requests.post(

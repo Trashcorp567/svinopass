@@ -81,6 +81,106 @@ def _build_creative_email_content(
     return subject, body
 
 
+def _build_seller_email_content(
+    *,
+    tier_name: str,
+    order_id: str,
+    cards: list[dict],
+    vision_summary: str,
+) -> tuple[str, str]:
+    subject = f"Svinopass — тексты для маркетплейса ({tier_name})"
+    blocks: list[str] = [
+        f"Здравствуйте!\n\nВаш заказ {order_id} (тариф «{tier_name}»).",
+    ]
+    if vision_summary:
+        blocks.append(f"\nЧто на фото: {vision_summary}")
+    for card in cards:
+        label = card.get("platform_label") or card.get("platform", "Площадка")
+        titles = card.get("titles", [])
+        numbered = "\n".join(f"{i + 1}. {title}" for i, title in enumerate(titles))
+        bullets = card.get("bullets", [])
+        bullet_block = "\n".join(f"• {line}" for line in bullets) if bullets else ""
+        blocks.append(
+            f"\n=== {label} ===\n"
+            f"Заголовки:\n{numbered}\n\n"
+            f"Описание:\n{card.get('description', '')}"
+        )
+        if bullet_block:
+            blocks.append(f"\nБуллеты:\n{bullet_block}")
+    blocks.append(
+        "\nМы не храним сгенерированные тексты на сервере. "
+        "Проверьте факты перед публикацией.\n\n"
+        "— Svinopass (svinopass.ru)\n"
+    )
+    return subject, "".join(blocks)
+
+
+def send_seller_email(
+    *,
+    to: str,
+    cards: list[dict],
+    vision_summary: str,
+    tier_name: str,
+    order_id: str,
+) -> bool:
+    subject, body = _build_seller_email_content(
+        tier_name=tier_name,
+        order_id=order_id,
+        cards=cards,
+        vision_summary=vision_summary,
+    )
+    return _deliver_email(
+        to=to,
+        subject=subject,
+        body=body,
+        order_id=order_id,
+        dev_log=f"to={to} order={order_id} tier={tier_name} seller_cards={len(cards)}",
+    )
+
+
+def _build_image_qr_email_content(
+    *,
+    tier_name: str,
+    order_id: str,
+    page_url: str,
+    expires_label: str,
+) -> tuple[str, str]:
+    subject = f"Svinopass — QR на картинку ({tier_name})"
+    body = (
+        f"Здравствуйте!\n\n"
+        f"Ваш заказ {order_id} (тариф «{tier_name}»).\n\n"
+        f"Ссылка на картинку (действует до {expires_label}):\n"
+        f"{page_url}\n\n"
+        f"Отсканируйте QR с экрана заказа или откройте ссылку в браузере.\n"
+        f"Поддерживаются только изображения — без видео и аудио.\n\n"
+        f"— Svinopass (svinopass.ru)\n"
+    )
+    return subject, body
+
+
+def send_image_qr_email(
+    *,
+    to: str,
+    tier_name: str,
+    order_id: str,
+    page_url: str,
+    expires_label: str,
+) -> bool:
+    subject, body = _build_image_qr_email_content(
+        tier_name=tier_name,
+        order_id=order_id,
+        page_url=page_url,
+        expires_label=expires_label,
+    )
+    return _deliver_email(
+        to=to,
+        subject=subject,
+        body=body,
+        order_id=order_id,
+        dev_log=f"to={to} order={order_id} tier={tier_name} image_qr=1",
+    )
+
+
 def _get_sendpulse_token() -> str | None:
     if settings.sendpulse_api_key:
         return settings.sendpulse_api_key

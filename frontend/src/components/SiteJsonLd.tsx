@@ -6,7 +6,7 @@ const websiteJsonLd = {
   name: SITE.name,
   url: SITE.url,
   description:
-    "Генератор паролей онлайн, проверка пароля, проверка утечек email. Криптостойкие пароли с доставкой на email.",
+    "Пароли с доставкой на email, проверка утечек, ники, карточки для маркетплейсов и QR-картинки.",
   inLanguage: "ru-RU",
 };
 
@@ -26,7 +26,7 @@ const organizationJsonLd = {
 const webAppJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: `${SITE.name} — генератор паролей онлайн`,
+  name: SITE.name,
   url: SITE.url,
   applicationCategory: "SecurityApplication",
   operatingSystem: "Web",
@@ -37,10 +37,11 @@ const webAppJsonLd = {
     description: "Генерация криптостойкого пароля с доставкой на email",
   },
   featureList: [
-    "Генератор паролей онлайн",
+    "Генератор паролей",
     "Проверка пароля и утечек",
-    "Проверка утечек email",
-    "Генератор ников и псевдонимов",
+    "Ники и псевдонимы",
+    "Карточки для маркетплейсов",
+    "QR-картинки",
   ],
 };
 

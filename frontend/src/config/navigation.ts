@@ -19,6 +19,11 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: "seller",
+    label: "Продавцам",
+    items: [{ href: "/sell", label: "Карточка маркетплейса" }],
+  },
+  {
     id: "logins",
     label: "Логины",
     items: [{ href: "/names", label: "Ники и псевдонимы" }],
@@ -29,6 +34,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/check", label: "Проверка пароля" },
       { href: "/watch", label: "Проверка утечек" },
+      { href: "/qr", label: "QR-картинка" },
     ],
   },
 ];

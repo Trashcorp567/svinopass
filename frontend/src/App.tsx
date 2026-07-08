@@ -20,6 +20,11 @@ import WatchPage from "./pages/WatchPage";
 import WatchSuccessPage from "./pages/WatchSuccessPage";
 import NamesPage from "./pages/NamesPage";
 import NamesSuccessPage from "./pages/NamesSuccessPage";
+import SellPage from "./pages/SellPage";
+import SellSuccessPage from "./pages/SellSuccessPage";
+import QrPage from "./pages/QrPage";
+import QrSuccessPage from "./pages/QrSuccessPage";
+import ImageViewPage from "./pages/ImageViewPage";
 import SeoServices from "./components/SeoServices";
 import PageJsonLd from "./components/PageJsonLd";
 import PigGameModal from "./components/PigGameModal";
@@ -38,7 +43,7 @@ function MainApp() {
   useEffect(() => {
     fetchTiers()
       .then((all) =>
-        setTiers(all.filter((t) => t.product_type !== "watch" && t.product_type !== "creative")),
+        setTiers(all.filter((t) => !["watch", "creative", "seller", "image_qr"].includes(t.product_type ?? ""))),
       )
       .catch(console.error);
   }, []);
@@ -105,6 +110,11 @@ function MainApp() {
 const NAV_CONFIRM_MSG = "Пароль ещё генерируется. Уйти на главную?";
 
 function resolvePage(pathname: string, onPasswordWaiting: (waiting: boolean) => void): ReactNode {
+  if (pathname.startsWith("/i/")) {
+    const token = pathname.slice(3).replace(/\/$/, "");
+    return <ImageViewPage token={token} />;
+  }
+
   switch (pathname) {
     case "/payment/success":
       return <PaymentSuccess onWaitingChange={onPasswordWaiting} />;
@@ -126,6 +136,14 @@ function resolvePage(pathname: string, onPasswordWaiting: (waiting: boolean) => 
       return <NamesPage />;
     case "/names/success":
       return <NamesSuccessPage />;
+    case "/sell":
+      return <SellPage />;
+    case "/sell/success":
+      return <SellSuccessPage />;
+    case "/qr":
+      return <QrPage />;
+    case "/qr/success":
+      return <QrSuccessPage />;
     default:
       return <MainApp />;
   }

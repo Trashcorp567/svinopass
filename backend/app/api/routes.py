@@ -1,8 +1,10 @@
+import base64
 import json
 import logging
+from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from slowapi import Limiter
 from sqlalchemy.orm import Session
@@ -17,6 +19,8 @@ from app.api.schemas import (
     HealthResponse,
     OrderPendingResponse,
     OrderResultResponse,
+    SellStageResponse,
+    SellerPlatformInfo,
     TierInfo,
     WatchPreviewRequest,
     WatchPreviewResponse,
@@ -28,7 +32,16 @@ from app.repositories import order_repo
 from app.services.ephemeral import get_report_meta, pop_fulfillment
 from app.services.fulfillment import fulfill_order
 from app.services.payment import create_paid_order, get_all_tiers, get_tier
-from app.services.creative_categories import list_categories, validate_creative_checkout
+from app.services.image_hosting import get_hosted_image, validate_image_qr_checkout
+from app.services.seller_platforms import list_platforms, validate_seller_checkout
+from app.services.seller_staging import (
+    ALLOWED_MIME,
+    MAX_IMAGE_BYTES,
+    SELL_STAGING_TTL_SECONDS,
+    create_staging_id,
+    peek_sell_image,
+    store_sell_image,
+)
 from app.services.report_pdf import build_svino_report_pdf
 from app.services.yookassa_client import build_return_url, create_payment, get_payment_status
 from app.services.breach_client import breach_to_dict, fetch_email_breaches
@@ -72,6 +85,64 @@ async def creative_categories():
     return [CreativeCategoryInfo(**c.__dict__) for c in list_categories()]
 
 
+@router.get("/sell/platforms", response_model=list[SellerPlatformInfo])
+async def sell_platforms():
+    return [
+        SellerPlatformInfo(
+            id=p.id,
+            label=p.label,
+            title_max=p.title_max,
+            description_max=p.description_max,
+            title_count=p.title_count,
+        )
+        for p in list_platforms()
+    ]
+
+
+@router.post("/sell/stage", response_model=SellStageResponse)
+@limiter.limit("30/hour")
+async def sell_stage(request: Request, file: UploadFile = File(...)):
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="Поддерживаются JPEG, PNG и WebP")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Пустой файл")
+    if len(data) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Фото до 5 МБ")
+
+    staging_id = create_staging_id()
+    store_sell_image(
+        staging_id,
+        mime=content_type,
+        data_b64=base64.b64encode(data).decode("ascii"),
+    )
+    return SellStageResponse(staging_id=staging_id, expires_in=SELL_STAGING_TTL_SECONDS)
+
+
+@router.post("/image/stage", response_model=SellStageResponse)
+@limiter.limit("30/hour")
+async def image_stage(request: Request, file: UploadFile = File(...)):
+    return await sell_stage(request, file)
+
+
+@router.get("/public/images/{token}")
+@limiter.limit("120/hour")
+async def public_image(token: str, request: Request):
+    payload = get_hosted_image(token)
+    if not payload:
+        raise HTTPException(status_code=404, detail="Image not found or expired")
+    try:
+        data = base64.b64decode(payload["data"])
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=404, detail="Image unavailable") from exc
+    mime = payload.get("mime", "image/jpeg")
+    if mime not in ALLOWED_MIME:
+        raise HTTPException(status_code=404, detail="Image unavailable")
+    return Response(content=data, media_type=mime, headers={"Cache-Control": "public, max-age=3600"})
+
+
 @router.post("/checkout", response_model=CheckoutResponse)
 @limiter.limit("5/minute")
 async def checkout(
@@ -97,6 +168,28 @@ async def checkout(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         order_options = {"category": category, "seed_words": seed_words}
+        generation_mode = "random"
+    elif product_type == "seller":
+        try:
+            order_options = validate_seller_checkout(
+                tier,
+                staging_id=body.staging_id,
+                product_name=body.product_name,
+                product_category=body.product_category,
+                product_hints=body.product_hints,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if not peek_sell_image(order_options["staging_id"]):
+            raise HTTPException(status_code=400, detail="Фото устарело — загрузите снова")
+        generation_mode = "random"
+    elif product_type == "image_qr":
+        try:
+            order_options = validate_image_qr_checkout(tier, staging_id=body.staging_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if not peek_sell_image(order_options["staging_id"]):
+            raise HTTPException(status_code=400, detail="Картинка устарела — загрузите снова")
         generation_mode = "random"
     elif product_type != "password":
         generation_mode = "random"
@@ -164,6 +257,10 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
             detail = "Subscription details already shown. Check your email."
         elif tier and tier.get("product_type") == "creative":
             detail = "Creative pack already shown. Check your email."
+        elif tier and tier.get("product_type") == "seller":
+            detail = "Seller pack already shown. Check your email."
+        elif tier and tier.get("product_type") == "image_qr":
+            detail = "Image QR already shown. Check your email."
         else:
             detail = "Password already shown. Check your email."
         raise HTTPException(status_code=410, detail=detail)
@@ -208,6 +305,33 @@ async def order_result(order_id: str, db: Session = Depends(get_db)):
             email_sent=payload["email_sent"],
             paid_at=order.paid_at,
             warning=payload.get("warning", "Сохраните варианты сейчас."),
+        )
+    if product_type == "seller":
+        return OrderResultResponse(
+            order_id=order_id,
+            tier=order.tier,
+            tier_name=tier["name"] if tier else order.tier,
+            product_type="seller",
+            seller_cards=payload.get("seller_cards", []),
+            seller_vision_summary=payload.get("seller_vision_summary"),
+            seller_source=payload.get("seller_source"),
+            email_sent=payload["email_sent"],
+            paid_at=order.paid_at,
+            warning=payload.get("warning", "Сохраните тексты сейчас."),
+        )
+    if product_type == "image_qr":
+        expires_raw = payload.get("image_qr_expires_at")
+        expires_at = datetime.fromisoformat(expires_raw) if expires_raw else None
+        return OrderResultResponse(
+            order_id=order_id,
+            tier=order.tier,
+            tier_name=tier["name"] if tier else order.tier,
+            product_type="image_qr",
+            image_qr_url=payload.get("image_qr_url"),
+            image_qr_expires_at=expires_at,
+            email_sent=payload["email_sent"],
+            paid_at=order.paid_at,
+            warning=payload.get("warning", "Сохраните QR и ссылку сейчас."),
         )
     return OrderResultResponse(
         order_id=order_id,

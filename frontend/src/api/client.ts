@@ -6,7 +6,23 @@ export interface Tier {
   description: string;
   length: number;
   features: string[];
-  product_type?: "password" | "backup_codes" | "watch" | "creative";
+  product_type?: "password" | "backup_codes" | "watch" | "creative" | "seller" | "image_qr";
+}
+
+export interface SellerCard {
+  platform: string;
+  platform_label: string;
+  titles: string[];
+  description: string;
+  bullets?: string[];
+}
+
+export interface SellerPlatform {
+  id: string;
+  label: string;
+  title_max: number;
+  description_max: number;
+  title_count: number;
 }
 
 export interface CreativeCategory {
@@ -42,6 +58,11 @@ export interface OrderResult {
   creative_category?: string | null;
   creative_kind?: string | null;
   creative_source?: string | null;
+  seller_cards?: SellerCard[] | null;
+  seller_vision_summary?: string | null;
+  seller_source?: string | null;
+  image_qr_url?: string | null;
+  image_qr_expires_at?: string | null;
   email_sent: boolean;
   paid_at: string | null;
   warning: string;
@@ -108,6 +129,47 @@ export function createCreativeCheckout(
       email,
       category,
       seed_words: seedWords,
+    }),
+  });
+}
+
+export function fetchSellerPlatforms(): Promise<SellerPlatform[]> {
+  return request<SellerPlatform[]>("/api/sell/platforms");
+}
+
+export async function stageSellImage(file: File): Promise<{ staging_id: string; expires_in: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch("/api/sell/stage", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail = body.detail;
+    const message = typeof detail === "string" ? detail : `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+  return response.json();
+}
+
+export function createSellCheckout(
+  tier: string,
+  email: string,
+  stagingId: string,
+  productName: string,
+  productCategory: string,
+  productHints: string,
+): Promise<CheckoutResult> {
+  return request<CheckoutResult>("/api/checkout", {
+    method: "POST",
+    body: JSON.stringify({
+      tier,
+      email,
+      staging_id: stagingId,
+      product_name: productName,
+      product_category: productCategory,
+      product_hints: productHints,
     }),
   });
 }

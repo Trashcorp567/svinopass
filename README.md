@@ -1,26 +1,92 @@
 # Svinopass
 
-Paid secure password generator with YooKassa payments.
+**svinopass.ru** — витрина микро-услуг: ввёл данные → оплатил → получил результат на экран и email. Без регистрации и личного кабинета.
 
-## Stack
+Прод: https://svinopass.ru  
+Репозиторий: https://github.com/Trashcorp567/svinopass
 
-- **Backend:** FastAPI, PostgreSQL, Redis, YooKassa SDK
-- **Frontend:** React + Vite + TypeScript
-- **Infra:** Docker Compose (postgres, redis, backend, frontend/nginx)
+---
 
-## Flow
+## Продукты
 
-1. User selects tier and enters email
-2. `POST /api/checkout` creates order and YooKassa payment (receipt 54-FZ)
-3. User pays on YooKassa page
-4. Webhook `payment.succeeded` triggers password generation + email
-5. User returns to `/payment/success?order_id=...` and sees password once (also in email)
-6. Password is **not stored** in Postgres (one-time Redis cache for screen display)
+| Раздел | Что продаём | Тарифы |
+|--------|-------------|--------|
+| **/** | Криптостойкие пароли (CSPRNG) | Свиномат 99₽ · Бекон Pro 499₽ · Легенда 1999₽ |
+| **/check** | Бесплатная проверка пароля (клиентская) | — |
+| **/watch** | Мониторинг email в утечках | Свиной сторож 199₽/мес |
+| **/names** | Ники, псевдонимы, био для соцсетей | Клички 99₽ · Псевдонимы 149₽ · Соцпак 249₽ |
+| **/sell** | Описание товара по фото для маркетплейсов | Ozon / WB / Avito 149₽ · Полный пакет 349₽ |
+| **/qr** | QR со ссылкой на **картинку** (30 дней) | QR-картинка 99₽ |
 
-## Quick start (local)
+Дополнительно: **Запасной хлев** 149₽ — 10 backup-кодов 2FA.
+
+### Общий платёжный flow
+
+```
+Выбор тарифа + email (+ опции)
+    → POST /api/checkout → ЮKassa
+    → webhook payment.succeeded → fulfill
+    → Redis (one-time) + письмо
+    → страница success: результат один раз
+```
+
+Секреты (пароли, ники, коды) **не пишем в Postgres** — только метаданные заказа.
+
+После оплаты пароля на экране success показывается **QR-код** с тем же паролем: можно отсканировать камерой и сохранить в менеджер паролей или заметки (рядом с кнопкой «Скопировать»).
+
+---
+
+## Roadmap
+
+### `/sell` — карточка маркетплейса по фото (реализовано)
+
+```
+Фото товара + опционально: название, категория, подсказки
+        ↓
+Vision (Yandex GPT multimodal) — что на фото
+        ↓
+Текстовая модель — 5 заголовков + SEO-описание под лимиты площадки
+        ↓
+Экран + email (checkout → fulfill)
+```
+
+Фото хранится в Redis до 30 минут только для оплаты и генерации, затем удаляется.
+
+### Не в планах
+
+- Управление Telegram-ботами и автопостинг по ссылке на паблик (отдельный SaaS, см. ContentPilot — не интегрируем).
+- QR с **видео и аудио** — не делаем (только картинки на `/qr`).
+
+Детальный бэклог v2: `docs/V2_ROADMAP.md`.
+
+---
+
+## Стек
+
+| Слой | Технологии |
+|------|------------|
+| Backend | FastAPI, PostgreSQL, Redis, YooKassa |
+| Frontend | React, Vite, TypeScript |
+| AI | Yandex GPT (ники, скоро — vision для /sell) |
+| Email | Yandex Postbox (HTTPS) на проде |
+| Infra | Docker Compose, Caddy + Let's Encrypt |
+
+---
+
+## Локальный запуск
 
 ```powershell
 copy .env.example .env
+docker compose up --build
+```
+
+- Frontend: http://localhost:3000  
+- API: http://localhost:3000/api/ (прокси nginx)  
+- `YOOKASSA_MOCK=true` — мгновенная «оплата» без ЮKassa
+
+### Без Docker (разработка)
+
+```powershell
 docker compose up postgres redis -d
 
 cd backend
@@ -33,155 +99,80 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/
+Vite: http://localhost:5173
 
-## Yandex SMTP (recommended)
+### Миграции БД (при обновлении)
 
-Without `SMTP_HOST`, emails are **not sent** in development — only logged in the backend terminal:
-
-```
-DEV email (SMTP not configured): to=... password_len=20
+```powershell
+docker compose exec -T postgres psql -U svinopass -d svinopass -f - < scripts/migrate-v4-creative.sql
 ```
 
-Add to root `.env` (loaded from `backend/` automatically):
+Скрипты: `scripts/migrate-v*.sql` — идемпотентные (`IF NOT EXISTS`).
 
-```env
-SMTP_HOST=smtp.yandex.ru
-SMTP_PORT=587
-SMTP_TLS=true
-SMTP_USER=you@yandex.ru
-SMTP_PASSWORD=your-mailbox-password
-SMTP_FROM=you@yandex.ru
+---
+
+## Переменные окружения
+
+См. `.env.example`:
+
+| Группа | Ключи |
+|--------|-------|
+| Core | `DATABASE_URL`, `REDIS_URL`, `ENV`, `CORS_ORIGINS` |
+| ЮKassa | `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`, `YOOKASSA_RETURN_URL`, `YOOKASSA_MOCK` |
+| Почта | `EMAIL_PROVIDER`, `SMTP_*` или `YANDEX_POSTBOX_*` |
+| Утечки | `BREACH_PROVIDER`, `LEAKCHECK_API_KEY` |
+| AI | `YANDEX_GPT_API_KEY`, `YANDEX_GPT_FOLDER_ID`, `CREATIVE_AI_ENABLED` |
+
+`.env` в git не коммитится.
+
+---
+
+## ЮKassa
+
+| Режим | Webhook |
+|-------|---------|
+| Локально + mock | не нужен |
+| Тестовый магазин | ngrok → `/api/webhooks/yookassa` |
+| **Прод** | `https://svinopass.ru/api/webhooks/yookassa` |
+
+Return URL на проде: `https://svinopass.ru/payment/success` (и отдельные success для `/watch`, `/names`).
+
+---
+
+## Продакшен (svinopass.ru)
+
+Сервер: VPS `168.222.143.232`, код в `/opt/svinopass`.
+
+```bash
+cd /opt/svinopass
+git pull
+# при необходимости: cat scripts/migrate-v4-creative.sql | docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres psql -U svinopass -d svinopass
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
-**Yandex mailbox setup:**
+DNS reg.ru: `A` `@` и `www` → IP VPS. Caddy сам выпускает SSL.
 
-1. Yandex Mail -> Settings -> Mail clients
-2. Enable **Allow access via mail clients**
-3. Use your mailbox password in `SMTP_PASSWORD` (or app password if 2FA is on)
-4. `SMTP_FROM` must match `SMTP_USER`
+---
 
-Restart backend after changing `.env`.
-
-## Gmail SMTP (alternative)
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_TLS=true
-SMTP_USER=your@gmail.com
-SMTP_PASSWORD=<16-char App Password>
-SMTP_FROM=your@gmail.com
-```
-
-Requires Google 2FA + App Password.
-
-## YooKassa setup
-
-### Test vs production
-
-| Scenario | Domain required? | Notes |
-|----------|------------------|-------|
-| `YOOKASSA_MOCK=true` (default dev) | No | Instant mock payment |
-| Test shop (`test_` keys) | No for `return_url` | `http://localhost:5173/payment/success` |
-| Webhook `payment.succeeded` | **Yes — public HTTPS** | Use ngrok locally |
-| Live payments | Yes | `https://svinopass.ru` |
-
-**Production deploy is not required to start.** Use a test shop + ngrok for webhooks.
-
-### Test shop
-
-```env
-YOOKASSA_MOCK=false
-YOOKASSA_SHOP_ID=<test shop id>
-YOOKASSA_SECRET_KEY=<test secret>
-YOOKASSA_RETURN_URL=http://localhost:5173/payment/success
-```
-
-Webhook in YooKassa cabinet: `https://<ngrok-host>/api/webhooks/yookassa`
-
-See [YooKassa webhook docs](https://yookassa.ru/developers/using-api/webhooks).
-
-### Production
-
-- `YOOKASSA_MOCK=false` with live credentials
-- `YOOKASSA_RETURN_URL=https://svinopass.ru/payment/success`
-- Webhook: `https://svinopass.ru/api/webhooks/yookassa`
-- SMTP + Redis configured
-- `docker compose up --build`
-
-## Environment variables
-
-See `.env.example`: `DATABASE_URL`, `REDIS_URL`, `YOOKASSA_*`, `SMTP_*`, `CORS_ORIGINS`, `ENV`.
-
-## Tests
+## Тесты
 
 ```powershell
 cd backend
 .\.venv\Scripts\pytest -v
 
 cd frontend
+npm run build
 npm run test:e2e
 ```
 
-## Docker production
+---
 
-```powershell
-# Local full stack (frontend :3000, API proxied at /api/)
-docker compose up --build
+## SEO
 
-# Server: only ports 80/443 (Caddy + auto HTTPS), ENV=production
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
-```
+`robots.txt`, `sitemap.xml`, meta/OG на страницах, JSON-LD. Верификация: Google Search Console, Яндекс Вебмастер.
 
-Frontend: http://localhost:3000 — API proxied at `/api/`.  
-In Docker, `YOOKASSA_RETURN_URL` is overridden to `:3000` (local) or `https://svinopass.ru` (prod override).
+---
 
-### Deploy on svinopass.ru (reg.ru)
+## Связанные проекты
 
-1. **VPS** (not shared hosting): Ubuntu 22.04+, 2 GB RAM, public IPv4. Domain can stay on reg.ru; VPS — reg.ru or any provider.
-2. **DNS** in reg.ru → domain `svinopass.ru` → DNS records:
-   - `A` `@` → VPS IP
-   - `A` `www` → VPS IP (or `CNAME` `www` → `svinopass.ru`)
-3. **Server**: install Docker, clone repo, copy `.env` with prod secrets (`YOOKASSA_MOCK=false`, SMTP, keys).
-4. **Start**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d`
-5. **YooKassa** webhook: `https://svinopass.ru/api/webhooks/yookassa`
-6. Open firewall: `22`, `80`, `443` only.
-
-Caddy in prod compose issues Let's Encrypt certificates automatically once DNS points to the server.
-
-## SEO and search engines
-
-The site ships with `robots.txt`, `sitemap.xml`, per-page meta tags (title, description, Open Graph), JSON-LD on the homepage, and a `www` → apex redirect.
-
-### 1. Verify ownership
-
-**Yandex Webmaster** — [webmaster.yandex.ru](https://webmaster.yandex.ru):
-
-1. Add site `https://svinopass.ru`
-2. Verify via **DNS TXT** record in reg.ru (recommended) or HTML file in `frontend/public/`
-3. Submit sitemap: `https://svinopass.ru/sitemap.xml`
-
-**Google Search Console** — [search.google.com/search-console](https://search.google.com/search-console):
-
-1. Add property `https://svinopass.ru`
-2. Verify via DNS TXT in reg.ru
-3. Sitemaps → add `https://svinopass.ru/sitemap.xml`
-
-### 2. Indexing timeline
-
-- First crawl: usually 1–7 days after sitemap submission
-- Stable positions: weeks to months; depends on queries and competition
-- Check indexing: `site:svinopass.ru` in Google / Yandex
-
-### 3. What helps ranking for this product
-
-- Unique queries: «генератор пароля оплата», «купить надёжный пароль»
-- Links from social profiles, directories, forums (no spam)
-- Keep legal pages (`/offer`, `/privacy`) — trust signals for YooKassa and search
-
-### 4. Optional later
-
-- Yandex Metrica / Google Analytics for traffic
-- Blog or FAQ page with long-tail keywords
-- `og:image` banner for social previews
+**ContentPilot** (`Work_Projects/contentpilot`) — подписочный контент-план + автопостинг в Telegram. С Svinopass **не сливаем**: другая модель (SaaS vs разовые покупки). Идеи маркетплейс-контента идут в Svinopass `/sell`.

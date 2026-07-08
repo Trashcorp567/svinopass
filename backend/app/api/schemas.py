@@ -22,6 +22,31 @@ class CheckoutRequest(BaseModel):
     mode: Literal["random", "passphrase"] = "random"
     category: str | None = None
     seed_words: list[str] = Field(default_factory=list, max_length=1)
+    staging_id: str | None = None
+    product_name: str | None = Field(None, max_length=120)
+    product_category: str | None = Field(None, max_length=120)
+    product_hints: str | None = Field(None, max_length=500)
+
+
+class SellerPlatformInfo(BaseModel):
+    id: str
+    label: str
+    title_max: int
+    description_max: int
+    title_count: int = 5
+
+
+class SellerCardInfo(BaseModel):
+    platform: str
+    platform_label: str
+    titles: list[str]
+    description: str
+    bullets: list[str] = Field(default_factory=list)
+
+
+class SellStageResponse(BaseModel):
+    staging_id: str
+    expires_in: int
 
 
 class CreativeCategoryInfo(BaseModel):
@@ -49,7 +74,7 @@ class OrderResultResponse(BaseModel):
     order_id: str
     tier: str
     tier_name: str
-    product_type: Literal["password", "backup_codes", "watch", "creative"] = "password"
+    product_type: Literal["password", "backup_codes", "watch", "creative", "seller", "image_qr"] = "password"
     password: str | None = None
     backup_codes: list[str] | None = None
     entropy_bits: float | None = None
@@ -62,6 +87,11 @@ class OrderResultResponse(BaseModel):
     creative_category: str | None = None
     creative_kind: str | None = None
     creative_source: str | None = None
+    seller_cards: list[SellerCardInfo] | None = None
+    seller_vision_summary: str | None = None
+    seller_source: str | None = None
+    image_qr_url: str | None = None
+    image_qr_expires_at: datetime | None = None
     email_sent: bool
     paid_at: datetime | None
     warning: str = (

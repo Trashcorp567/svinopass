@@ -6,11 +6,11 @@ export type PageMeta = {
   noindex?: boolean;
 };
 
-/** Главная: ключ «генератор паролей онлайн» в title и description. */
+/** Главная: бренд + пароли в description для SEO, без узкого «только генератор». */
 export const DEFAULT_META: PageMeta = {
-  title: "Генератор паролей онлайн — криптостойкий пароль на email",
+  title: `${SITE.name} — пароли, проверка утечек и онлайн-инструменты`,
   description:
-    "Генератор паролей онлайн с доставкой на email после оплаты. Бесплатно: проверка пароля и проверка утечек email. Пароли на сервере не храним.",
+    "Генератор паролей с доставкой на email, бесплатная проверка утечек, ники, карточки для Ozon и Wildberries, QR-картинки. Пароли на сервере не храним.",
 };
 
 export const PAGE_META: Record<string, PageMeta> = {
@@ -33,6 +33,26 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/names/success": {
     title: "Набор готов",
     description: "Страница выдачи ников и псевдонимов после оплаты.",
+    noindex: true,
+  },
+  "/sell": {
+    title: "Описание товара для Ozon, Wildberries и Avito по фото",
+    description:
+      "Загрузите фото товара — получите заголовки и SEO-описание для маркетплейса. Ozon, WB, Avito или полный пакет.",
+  },
+  "/sell/success": {
+    title: "Тексты для маркетплейса готовы",
+    description: "Страница выдачи описаний товара после оплаты.",
+    noindex: true,
+  },
+  "/qr": {
+    title: "QR-картинка — ссылка на фото по QR",
+    description:
+      "Загрузите изображение и получите QR со ссылкой. Только JPEG, PNG, WebP. Хостинг 30 дней. Без видео и аудио.",
+  },
+  "/qr/success": {
+    title: "QR готов",
+    description: "Страница выдачи QR-картинки после оплаты.",
     noindex: true,
   },
   "/offer": {
@@ -68,6 +88,8 @@ export const SITEMAP_PATHS = [
   "/",
   "/check",
   "/names",
+  "/sell",
+  "/qr",
   "/watch",
   "/offer",
   "/privacy",

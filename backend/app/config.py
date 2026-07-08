@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     yandex_gpt_api_key: str = ""
     yandex_gpt_folder_id: str = ""
     yandex_gpt_model: str = "yandexgpt-lite"
+    # Seller cards: text model (yandexgpt-lite) + optional vision model (gemma-3-27b-it)
+    yandex_gpt_seller_model: str = "yandexgpt-lite"
+    yandex_gpt_vision_model: str = ""
     creative_ai_enabled: bool = True
 
 

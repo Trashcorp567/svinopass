@@ -21,6 +21,16 @@
     <priority>0.85</priority>
   </url>
   <url>
+    <loc>https://svinopass.ru/sell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://svinopass.ru/qr</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://svinopass.ru/offer</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

@@ -1,6 +1,8 @@
 /** Реквизиты продавца для страниц сайта и модерации ЮKassa. */
 export const SITE = {
   name: "Svinopass",
+  /** Короткий слоган для hero и SEO — не только пароли. */
+  tagline: "Пароли, безопасность и полезные инструменты онлайн",
   domain: "svinopass.ru",
   url: "https://svinopass.ru",
   sellerName: "Глинский Владислав Иванович",

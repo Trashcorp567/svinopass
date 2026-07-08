@@ -1,4 +1,5 @@
 import { useState } from "react";
+import QRCode from "react-qr-code";
 import type { OrderResult } from "../api/client";
 
 interface PasswordResultProps {
@@ -50,6 +51,22 @@ export default function PasswordResult({ result }: PasswordResultProps) {
         ) : (
           <>
             <div className="generator__password">{result.password}</div>
+            {result.password && (
+              <div className="generator__qr" aria-label="QR-код пароля">
+                <p className="generator__qr-hint">
+                  Отсканируйте камерой — удобно сохранить в менеджер паролей или заметки
+                </p>
+                <div className="generator__qr-frame">
+                  <QRCode
+                    value={result.password}
+                    size={168}
+                    level="M"
+                    bgColor="#1a0f14"
+                    fgColor="#f8c8dc"
+                  />
+                </div>
+              </div>
+            )}
             {result.entropy_bits != null && (
               <div className="generator__stats">
                 Энтропия: <strong>{result.entropy_bits}</strong> бит

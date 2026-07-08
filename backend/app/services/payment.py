@@ -130,6 +130,91 @@ TIERS: dict[str, dict] = {
             "Доставка на экран и email",
         ],
     },
+    "ozon_card": {
+        "id": "ozon_card",
+        "name": "Карточка Ozon",
+        "price": 149,
+        "price_label": "149₽",
+        "description": "5 заголовков + SEO-описание для Ozon по фото товара",
+        "length": 0,
+        "product_type": "seller",
+        "platform": "ozon",
+        "return_path": "/sell/success",
+        "features": [
+            "5 вариантов заголовка",
+            "Описание под лимиты Ozon",
+            "Буллеты для характеристик",
+            "Доставка на экран и email",
+        ],
+    },
+    "wb_card": {
+        "id": "wb_card",
+        "name": "Карточка WB",
+        "price": 149,
+        "price_label": "149₽",
+        "description": "5 заголовков + описание для Wildberries по фото товара",
+        "length": 0,
+        "product_type": "seller",
+        "platform": "wb",
+        "return_path": "/sell/success",
+        "features": [
+            "5 коротких заголовков",
+            "Описание под лимиты WB",
+            "Акцент на выгоды",
+            "Доставка на экран и email",
+        ],
+    },
+    "avito_card": {
+        "id": "avito_card",
+        "name": "Карточка Avito",
+        "price": 149,
+        "price_label": "149₽",
+        "description": "5 заголовков + текст объявления для Avito по фото",
+        "length": 0,
+        "product_type": "seller",
+        "platform": "avito",
+        "return_path": "/sell/success",
+        "features": [
+            "5 вариантов заголовка",
+            "Текст объявления",
+            "Дружелюбный стиль",
+            "Доставка на экран и email",
+        ],
+    },
+    "sell_pack": {
+        "id": "sell_pack",
+        "name": "Полный пакет",
+        "price": 349,
+        "price_label": "349₽",
+        "description": "Ozon + Wildberries + Avito — тексты по одному фото",
+        "length": 0,
+        "product_type": "seller",
+        "platform": "all",
+        "return_path": "/sell/success",
+        "features": [
+            "3 площадки за раз",
+            "По 5 заголовков на каждую",
+            "Описания под лимиты площадок",
+            "Доставка на экран и email",
+        ],
+    },
+    "qr_pic": {
+        "id": "qr_pic",
+        "name": "QR-картинка",
+        "price": 99,
+        "price_label": "99₽",
+        "description": "Загрузите фото — получите QR со ссылкой на картинку (30 дней)",
+        "length": 0,
+        "product_type": "image_qr",
+        "host_days": 30,
+        "return_path": "/qr/success",
+        "features": [
+            "Только JPEG, PNG, WebP",
+            "QR для печати и мессенджеров",
+            "Ссылка открывает картинку в браузере",
+            "Хостинг 30 дней",
+        ],
+    },
 }
 
 
@@ -159,6 +244,10 @@ def create_paid_order(
         raise ValueError("Invalid generation mode")
     if product_type == "creative" and not order_options:
         raise ValueError("Creative orders require options")
+    if product_type == "seller" and not order_options:
+        raise ValueError("Seller orders require options")
+    if product_type == "image_qr" and not order_options:
+        raise ValueError("Image QR orders require options")
     return order_repo.create_pending_order(
         db,
         email=email,

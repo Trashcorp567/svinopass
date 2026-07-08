@@ -23,7 +23,13 @@ function upsertLink(rel: string, href: string) {
 
 export function usePageMeta(pathname: string) {
   useEffect(() => {
-    const meta: PageMeta = PAGE_META[pathname] ?? DEFAULT_META;
+    const meta: PageMeta = pathname.startsWith("/i/")
+      ? {
+          title: "Картинка по QR",
+          description: "Просмотр изображения по ссылке Svinopass.",
+          noindex: true,
+        }
+      : PAGE_META[pathname] ?? DEFAULT_META;
     const canonicalPath = pathname === "/" ? "" : pathname;
     const url = `${SITE.url}${canonicalPath}`;
     const documentTitle =

@@ -9,7 +9,7 @@ const TOOLS = [
   {
     href: "/check",
     name: "Проверка пароля",
-    description: "Оценка силы и поиск в базах утечек (HIBP).",
+    description: "Оценка силы и поиск в базах утечек.",
   },
   {
     href: "/watch",
@@ -17,9 +17,19 @@ const TOOLS = [
     description: "Бесплатный снимок и подписка на мониторинг.",
   },
   {
+    href: "/qr",
+    name: "QR-картинка",
+    description: "QR со ссылкой на изображение. Хостинг 30 дней.",
+  },
+  {
     href: "/names",
     name: "Ники и псевдонимы",
-    description: "Платные наборы English-ников, псевдонимов и био для соцсетей и игр.",
+    description: "Платные наборы ников, псевдонимов и био для соцсетей и игр.",
+  },
+  {
+    href: "/sell",
+    name: "Карточка маркетплейса",
+    description: "Описание товара для Ozon, Wildberries и Avito по фото.",
   },
 ] as const;
 
@@ -30,8 +40,8 @@ export default function SeoServices() {
         Услуги Svinopass
       </h2>
       <p className="seo-services__lead">
-        {SITE.name} — генератор паролей онлайн с доставкой на email. Бесплатно: проверка пароля и
-        проверка утечек email.
+        {SITE.name} — {SITE.tagline.toLowerCase()}. Генератор паролей, проверка утечек, ники,
+        карточки для маркетплейсов и QR-картинки.
       </p>
       <ul className="seo-services__list">
         {TOOLS.map((tool) => (
