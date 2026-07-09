@@ -45,6 +45,7 @@ from app.services.seller_staging import (
 from app.services.report_pdf import build_svino_report_pdf
 from app.services.yookassa_client import build_return_url, create_payment, get_payment_status
 from app.services.breach_client import breach_to_dict, fetch_email_breaches
+from app.services.creative_categories import list_categories
 from app.services.watch_service import run_due_watch_checks
 
 logger = logging.getLogger(__name__)
