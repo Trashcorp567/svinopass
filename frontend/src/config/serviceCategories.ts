@@ -1,4 +1,4 @@
-export type ServiceCategoryId = "passwords" | "logins" | "seller" | "security";
+export type ServiceCategoryId = "passwords" | "logins" | "seller" | "security" | "qr";
 
 export interface ServiceCategory {
   id: ServiceCategoryId;
@@ -37,6 +37,13 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     description: "Проверки и мониторинг",
     accent: "#b8a0ff",
   },
+  {
+    id: "qr",
+    label: "QR-картинка",
+    icon: "📷",
+    description: "QR со ссылкой на фото",
+    accent: "#ffb86c",
+  },
 ];
 
 export const FREE_SECURITY_TOOLS = [
@@ -57,9 +64,7 @@ export const FREE_SECURITY_TOOLS = [
 export function tierPageHref(category: ServiceCategoryId, tierId: string): string {
   if (category === "logins") return `/names?tier=${tierId}`;
   if (category === "seller") return `/sell?tier=${tierId}`;
-  if (category === "security") {
-    if (tierId === "storozh") return "/watch";
-    if (tierId === "qr_pic") return "/qr";
-  }
+  if (category === "security" && tierId === "storozh") return "/watch";
+  if (category === "qr") return "/qr";
   return "/";
 }

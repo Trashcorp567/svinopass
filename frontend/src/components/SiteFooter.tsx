@@ -3,10 +3,13 @@ import { LEGAL_LINKS, SITE } from "../config/site";
 export default function SiteFooter() {
   return (
     <footer className="footer">
-      <nav className="footer__nav" aria-label="Юридическая информация">
+      <nav className="footer__nav" aria-label="Навигация и документы">
         <a href="/#pricing">Услуги</a>
+        <a href="/names">Ники</a>
+        <a href="/sell">Маркетплейсы</a>
+        <a href="/qr">QR-картинка</a>
         <a href="/check">Проверка пароля</a>
-        <a href="/watch">Проверка данных</a>
+        <a href="/watch">Проверка утечек</a>
         {LEGAL_LINKS.map((link) => (
           <a key={link.href} href={link.href}>
             {link.label}

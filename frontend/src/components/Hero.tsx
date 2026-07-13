@@ -11,8 +11,8 @@ export default function Hero({ onCta }: { onCta: () => void }) {
       <h1 className="hero__title">{SITE.name}</h1>
       <p className="hero__tagline">{SITE.tagline}</p>
       <p className="hero__subtitle">
-        Пароли, ники, карточки для маркетплейсов и инструменты безопасности — всё на одной главной.
-        Выберите категорию и тариф ниже.
+        Пароли, ники, карточки для Ozon и Wildberries, QR-картинки и проверка утечек — всё на одной
+        главной. Выберите категорию и тариф ниже.
       </p>
       <button className="btn btn--primary btn--large" onClick={onCta}>
         Выбрать услугу

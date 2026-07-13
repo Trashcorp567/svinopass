@@ -29,6 +29,24 @@ const PAGE_SCHEMA: Record<string, object> = {
     description: "Платные наборы ников, псевдонимов и био для соцсетей и игр.",
     offers: { "@type": "Offer", price: "99", priceCurrency: "RUB" },
   },
+  "/sell": {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "Описание товара для маркетплейса",
+    url: `${SITE.url}/sell`,
+    provider: { "@type": "Organization", name: SITE.name },
+    description: "Заголовки и SEO-описание для Ozon, Wildberries и Avito по фото товара.",
+    offers: { "@type": "Offer", price: "149", priceCurrency: "RUB" },
+  },
+  "/qr": {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: "QR-картинка — ссылка на фото по QR",
+    url: `${SITE.url}/qr`,
+    provider: { "@type": "Organization", name: SITE.name },
+    description: "Загрузите изображение и получите QR со ссылкой. Хостинг 30 дней.",
+    offers: { "@type": "Offer", price: "99", priceCurrency: "RUB" },
+  },
 };
 
 export default function PageJsonLd({ pathname }: { pathname: string }) {

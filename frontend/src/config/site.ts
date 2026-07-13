@@ -2,7 +2,7 @@
 export const SITE = {
   name: "Svinopass",
   /** Короткий слоган для hero и SEO — не только пароли. */
-  tagline: "Пароли, безопасность и полезные инструменты онлайн",
+  tagline: "Пароли, ники, маркетплейсы, QR и инструменты безопасности",
   domain: "svinopass.ru",
   url: "https://svinopass.ru",
   sellerName: "Глинский Владислав Иванович",

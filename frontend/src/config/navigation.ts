@@ -34,7 +34,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/check", label: "Проверка пароля" },
       { href: "/watch", label: "Проверка утечек" },
-      { href: "/qr", label: "QR-картинка" },
     ],
+  },
+  {
+    id: "qr",
+    label: "QR",
+    items: [{ href: "/qr", label: "QR-картинка" }],
   },
 ];

@@ -40,7 +40,9 @@ function tiersForCategory(tiers: Tier[], category: ServiceCategoryId): Tier[] {
     case "seller":
       return tiers.filter((t) => t.product_type === "seller");
     case "security":
-      return tiers.filter((t) => t.product_type === "watch" || t.product_type === "image_qr");
+      return tiers.filter((t) => t.product_type === "watch");
+    case "qr":
+      return tiers.filter((t) => t.product_type === "image_qr");
     default:
       return [];
   }
@@ -172,11 +174,25 @@ export default function ServiceHub({
                 </a>
               ))}
             </div>
-            <p className="service-hub__panel-note">Платные инструменты безопасности:</p>
+            <p className="service-hub__panel-note">Мониторинг утечек email:</p>
             <CategoryTierGrid
               tiers={categoryTiers}
               hrefForTier={(tierId) => tierPageHref("security", tierId)}
               ctaLabel="Подключить"
+            />
+          </>
+        )}
+
+        {activeCategory === "qr" && (
+          <>
+            <p className="service-hub__panel-note">
+              Загрузите фото — получите QR-код со ссылкой на картинку. Хостинг 30 дней, для печати и
+              мессенджеров.
+            </p>
+            <CategoryTierGrid
+              tiers={categoryTiers}
+              hrefForTier={() => tierPageHref("qr", "qr_pic")}
+              ctaLabel="Создать QR"
             />
           </>
         )}

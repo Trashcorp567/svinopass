@@ -6,7 +6,7 @@ const websiteJsonLd = {
   name: SITE.name,
   url: SITE.url,
   description:
-    "Пароли с доставкой на email, проверка утечек, ники, карточки для маркетплейсов и QR-картинки.",
+    "Цифровые услуги онлайн: пароли, ники, карточки маркетплейсов, QR-картинки, проверка утечек.",
   inLanguage: "ru-RU",
 };
 
@@ -23,25 +23,47 @@ const organizationJsonLd = {
   },
 };
 
-const webAppJsonLd = {
+const servicesListJsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: SITE.name,
-  url: SITE.url,
-  applicationCategory: "SecurityApplication",
-  operatingSystem: "Web",
-  offers: {
-    "@type": "Offer",
-    price: "99",
-    priceCurrency: "RUB",
-    description: "Генерация криптостойкого пароля с доставкой на email",
-  },
-  featureList: [
-    "Генератор паролей",
-    "Проверка пароля и утечек",
-    "Ники и псевдонимы",
-    "Карточки для маркетплейсов",
-    "QR-картинки",
+  "@type": "ItemList",
+  name: "Услуги Svinopass",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Генератор паролей",
+      url: `${SITE.url}/#pricing`,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Проверка пароля и утечек",
+      url: `${SITE.url}/check`,
+    },
+    {
+      "@type": "ListItem",
+      position: 3,
+      name: "Ники и псевдонимы",
+      url: `${SITE.url}/names`,
+    },
+    {
+      "@type": "ListItem",
+      position: 4,
+      name: "Карточки для маркетплейсов",
+      url: `${SITE.url}/sell`,
+    },
+    {
+      "@type": "ListItem",
+      position: 5,
+      name: "QR-картинка",
+      url: `${SITE.url}/qr`,
+    },
+    {
+      "@type": "ListItem",
+      position: 6,
+      name: "Мониторинг утечек email",
+      url: `${SITE.url}/watch`,
+    },
   ],
 };
 
@@ -58,7 +80,7 @@ export default function SiteJsonLd() {
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(servicesListJsonLd) }}
       />
     </>
   );
