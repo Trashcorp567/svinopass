@@ -4,7 +4,7 @@ export default function SiteFooter() {
   return (
     <footer className="footer">
       <nav className="footer__nav" aria-label="Юридическая информация">
-        <a href="/#pricing">Тарифы</a>
+        <a href="/#pricing">Услуги</a>
         <a href="/check">Проверка пароля</a>
         <a href="/watch">Проверка данных</a>
         {LEGAL_LINKS.map((link) => (

@@ -9,8 +9,8 @@ interface PricingProps {
 
 export default function Pricing({ tiers, selectedTier, recommendedFor, onSelect }: PricingProps) {
   return (
-    <section className="pricing" id="pricing">
-      <h2 className="section-title">Услуги и цены</h2>
+    <section className="pricing" id="password-tiers">
+      <h2 className="section-title section-title--sm">Тарифы паролей</h2>
       <p className="pricing__intro">
         Разовая оплата за генерацию одного пароля. Цены фиксированы, в рублях РФ.
       </p>

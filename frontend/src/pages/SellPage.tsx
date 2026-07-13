@@ -25,7 +25,14 @@ export default function SellPage() {
 
   useEffect(() => {
     fetchTiers()
-      .then((all) => setTiers(all.filter((t) => t.product_type === "seller")))
+      .then((all) => {
+        setTiers(all.filter((t) => t.product_type === "seller"));
+        const params = new URLSearchParams(window.location.search);
+        const tier = params.get("tier");
+        if (tier && SELL_TIER_IDS.includes(tier as SellTierId)) {
+          setSelectedTier(tier as SellTierId);
+        }
+      })
       .catch(console.error);
   }, []);
 

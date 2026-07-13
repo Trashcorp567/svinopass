@@ -14,7 +14,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "passwords",
     label: "Пароли",
     items: [
-      { href: "/#pricing", label: "Тарифы и оплата" },
+      { href: "/#pricing", label: "Все услуги" },
       { href: "/delivery", label: "Получение заказа" },
     ],
   },

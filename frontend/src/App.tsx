@@ -1,9 +1,6 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { createCheckout, fetchTiers, type GenerationMode, type Tier } from "./api/client";
 import Hero from "./components/Hero";
-import Pricing from "./components/Pricing";
-import UseCasePicker from "./components/UseCasePicker";
-import Checkout from "./components/Checkout";
 import DeliveryInfo from "./components/DeliveryInfo";
 import { USE_CASE_LABELS, type UseCaseId } from "./config/useCases";
 import SiteHeader from "./components/SiteHeader";
@@ -25,7 +22,7 @@ import SellSuccessPage from "./pages/SellSuccessPage";
 import QrPage from "./pages/QrPage";
 import QrSuccessPage from "./pages/QrSuccessPage";
 import ImageViewPage from "./pages/ImageViewPage";
-import SeoServices from "./components/SeoServices";
+import ServiceHub from "./components/ServiceHub";
 import PageJsonLd from "./components/PageJsonLd";
 import PigGameModal from "./components/PigGameModal";
 
@@ -41,14 +38,8 @@ function MainApp() {
   const [payError, setPayError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTiers()
-      .then((all) =>
-        setTiers(all.filter((t) => !["watch", "creative", "seller", "image_qr"].includes(t.product_type ?? ""))),
-      )
-      .catch(console.error);
+    fetchTiers().then(setTiers).catch(console.error);
   }, []);
-
-  const selected = tiers.find((t) => t.id === selectedTier) ?? null;
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -58,7 +49,6 @@ function MainApp() {
     setActiveUseCase(useCaseId);
     setSelectedTier(tierId);
     setRecommendedTierId(tierId);
-    scrollTo("pricing");
   };
 
   const recommendedFor =
@@ -81,27 +71,24 @@ function MainApp() {
 
   return (
     <>
-      <Hero onCta={() => scrollTo("use-cases")} />
-      <UseCasePicker activeUseCase={activeUseCase} onSelect={handleUseCaseSelect} />
-      <Pricing
+      <Hero onCta={() => scrollTo("pricing")} />
+      <ServiceHub
         tiers={tiers}
         selectedTier={selectedTier}
+        activeUseCase={activeUseCase}
         recommendedFor={recommendedFor}
-        onSelect={setSelectedTier}
-      />
-      <Checkout
-        tier={selected}
         email={email}
-        onEmailChange={setEmail}
-        mode={generationMode}
-        onModeChange={setGenerationMode}
+        generationMode={generationMode}
         agreed={agreed}
+        payLoading={payLoading}
+        onUseCaseSelect={handleUseCaseSelect}
+        onTierSelect={setSelectedTier}
+        onEmailChange={setEmail}
+        onModeChange={setGenerationMode}
         onAgreedChange={setAgreed}
-        loading={payLoading}
-        onPay={handlePay}
+        onPay={() => void handlePay()}
       />
       <DeliveryInfo />
-      <SeoServices />
       {payError && <p className="error-banner">{payError}</p>}
     </>
   );

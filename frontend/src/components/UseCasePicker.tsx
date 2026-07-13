@@ -8,7 +8,7 @@ interface UseCasePickerProps {
 export default function UseCasePicker({ activeUseCase, onSelect }: UseCasePickerProps) {
   return (
     <section className="use-cases" id="use-cases">
-      <h2 className="section-title">Под задачу</h2>
+      <h2 className="section-title section-title--sm">Под задачу</h2>
       <p className="use-cases__intro">Выберите сценарий — подсветим подходящий тариф.</p>
       <div className="use-cases__grid">
         {USE_CASE_PRESETS.map((preset) => (

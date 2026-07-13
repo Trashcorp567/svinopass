@@ -32,6 +32,11 @@ export default function NamesPage() {
         if (allCategories.length > 0) {
           setSelectedCategory(allCategories[0].id);
         }
+        const params = new URLSearchParams(window.location.search);
+        const tier = params.get("tier");
+        if (tier && CREATIVE_TIER_IDS.includes(tier as CreativeTierId)) {
+          setSelectedTier(tier as CreativeTierId);
+        }
       })
       .catch(console.error);
   }, []);
